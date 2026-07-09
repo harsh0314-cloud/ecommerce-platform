@@ -40,7 +40,9 @@ exports.getAllOrders = async (req, res, next) => {
       orderBy: { createdAt: 'desc' },
       include: { 
         items: true, 
-        user: { select: { firstName: true, lastName: true, email: true } } 
+        user: { select: { firstName: true, lastName: true, email: true } },
+        address: true,      
+        payments: true      
       }
     });
     res.status(200).json({ status: 'success', data: { orders } });

@@ -132,7 +132,7 @@ export default function Dashboard() {
                     </div>
                   )}
 
-                  {/* --- ORDERS TAB --- */}
+                                  {/* --- ORDERS TAB --- */}
                   {activeTab === 'orders' && (
                     <div className="space-y-6">
                       {data.map(order => (
@@ -146,6 +146,29 @@ export default function Dashboard() {
                               {order.status}
                             </span>
                           </div>
+                          
+                          {/* Customer & Delivery Details */}
+                          <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg text-sm">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-gray-600 dark:text-gray-400">
+                              <div>
+                                <p className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-500 mb-1">Customer Details</p>
+                                <p className="font-medium text-gray-900 dark:text-white">{order.address?.firstName} {order.address?.lastName}</p>
+                                <p>{order.address?.phone}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-500 mb-1">Delivery Address</p>
+                                <p>{order.address?.addressLine1}</p>
+                                <p>{order.address?.city}, {order.address?.state} - {order.address?.postalCode}</p>
+                              </div>
+                            </div>
+                            <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                              <span className={`text-xs font-bold uppercase ${order.payments?.length > 0 ? 'text-green-600' : 'text-blue-600'}`}>
+                                💳 {order.payments?.length > 0 ? 'Paid via Stripe' : 'Cash on Delivery'}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Ordered Items */}
                           <div className="space-y-3">
                             {order.items.map(item => (
                               <div key={item.id} className="flex items-center gap-4 bg-gray-50 dark:bg-gray-900/50 p-3 rounded-lg">
