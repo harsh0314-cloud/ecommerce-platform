@@ -163,7 +163,7 @@ export default function Dashboard() {
                             </div>
                             <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
                               <span className={`text-xs font-bold uppercase ${order.payments?.length > 0 ? 'text-green-600' : 'text-blue-600'}`}>
-                                💳 {order.payments?.length > 0 ? 'Paid via Stripe' : 'Cash on Delivery'}
+                               💳 {order.payment?.status === 'COMPLETED' ? 'Paid via Stripe' : 'Cash on Delivery'}
                               </span>
                             </div>
                           </div>

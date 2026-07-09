@@ -42,7 +42,7 @@ exports.getAllOrders = async (req, res, next) => {
         items: true, 
         user: { select: { firstName: true, lastName: true, email: true } },
         address: true,      
-        payments: true      
+        payment: true      
       }
     });
     res.status(200).json({ status: 'success', data: { orders } });
