@@ -17,4 +17,17 @@ router.delete('/products/:id', adminController.deleteProduct);
 router.get('/orders', adminController.getAllOrders);
 router.get('/customers', adminController.getAllCustomers);
 
+
+router.get('/categories', async (req, res) => {
+   const data = await req.prisma.category.findMany();
+   res.status(200).json({ status: 'success', data: { categories: data } });
+});
+
+router.get('/brands', async (req, res) => {
+   const data = await req.prisma.brand.findMany();
+   res.status(200).json({ status: 'success', data: { brands: data } });
+});
+
+module.exports = router;
+
 module.exports = router;
