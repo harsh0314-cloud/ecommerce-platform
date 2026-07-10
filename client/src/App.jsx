@@ -61,7 +61,7 @@ function AnimatedRoutes() {
           <Route path="/orders" element={<Page><Orders /></Page>} />
           <Route path="/orders/:id" element={<Page><OrderDetails /></Page>} />
           <Route path="/profile" element={<Page><Profile /></Page>} />
-          <Route path="/payment/success" element={<Page><PaymentSuccess /></Page>} />
+          <Route path="/payment/success" element={<PaymentSuccess />} />
           <Route path="/payment/cancel" element={<Page><PaymentCancel /></Page>} />
           <Route path="/admin/add-product" element={<ProtectedAdminRoute><AddProduct /></ProtectedAdminRoute>} />
           <Route path="/admin" element={<ProtectedAdminRoute><AdminLayout /></ProtectedAdminRoute>}>
