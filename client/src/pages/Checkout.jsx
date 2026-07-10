@@ -46,7 +46,7 @@ export default function Checkout() {
         await api.post('/orders', { ...form, paymentMethod: 'CASH_ON_DELIVERY' });
         toast.success('Order placed successfully!');
         await fetchCart();
-        navigate('/');
+        navigate(`/payment/success?orderId=${orderRes.data.order.id}`);
       } else {
         const res = await api.post('/payments/create-checkout-session', form);
         const stripeUrl = res.data.url;
