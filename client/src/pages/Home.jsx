@@ -69,7 +69,7 @@ export default function Home() {
   const featured = products.slice(0, 8);
 
   return (
-    <div className="bg-background">
+    <div className="bg-background overflow-x-hidden">
       {/* HERO */}
       <section ref={heroRef} onMouseMove={handleMouse} className="relative h-screen overflow-hidden bg-ink text-white">
         <motion.div style={{ y: imgY }} className="absolute inset-0 z-0">
