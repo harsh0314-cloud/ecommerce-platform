@@ -54,17 +54,18 @@ body {
   margin: 0;
 }
 
+/* THE FIX IS RIGHT HERE */
 #root {
-  width: 100%;
-  max-width: 100%;
+  width: 100%;         /* Changed from 1126px to 100% */
+  max-width: 1126px;   /* Moved 1126px to max-width */
   margin: 0 auto;
-  text-align: center;
   border-inline: 1px solid var(--border);
   min-height: 100svh;
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
 }
+/* ---------------------- */
 
 h1,
 h2 {
@@ -109,5 +110,3 @@ code {
   padding: 4px 8px;
   background: var(--code-bg);
 }
-
-
