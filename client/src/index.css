@@ -57,13 +57,15 @@ body {
 /* THE FIX IS RIGHT HERE */
 #root {
   width: 100%;         /* Changed from 1126px to 100% */
-  max-width: 1126px;   /* Moved 1126px to max-width */
+  max-width: 1126px;
+  min-width: 0;   
   margin: 0 auto;
   border-inline: 1px solid var(--border);
   min-height: 100svh;
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
+  overflow-x: hidden;
 }
 /* ---------------------- */
 
