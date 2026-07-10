@@ -71,7 +71,7 @@ export default function Home() {
   return (
     <div className="bg-background overflow-x-hidden">
             {/* HERO */}
-      <section ref={heroRef} onMouseMove={handleMouse} className="relative h-[100dvh] md:h-screen overflow-hidden bg-ink text-white">
+      <section ref={heroRef} onMouseMove={handleMouse} className="relative aspect-[4/5] md:aspect-auto md:h-screen overflow-hidden bg-ink text-white">
         <motion.div style={{ y: imgY }} className="absolute inset-0 z-0">
           <motion.img
             src={HERO}
@@ -80,7 +80,7 @@ export default function Home() {
             animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 1.6, ease }}
             style={{ x: mouse.x * -18, y: mouse.y * -18 }}
-            className="h-full w-full object-cover object-top md:object-center"
+            className="h-full w-full object-cover object-center"
           />
           <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/40 to-black/10" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/30" />
