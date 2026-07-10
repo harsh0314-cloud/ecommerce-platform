@@ -68,8 +68,7 @@ export default function Header() {
         data-testid="site-header"
       >
         <div className="container-luxe">
-          <div className={`flex items-center justify-between transition-all duration-500 ${scrolled ? 'h-16' : 'h-20'} ${dark ? 'text-white' : 'text-foreground'}`}>
-            {/* Left nav (desktop) */}
+            <div className={`grid grid-cols-3 items-center transition-all duration-500 ${scrolled ? 'h-16' : 'h-20'} ${dark ? 'text-white' : 'text-foreground'}`}> 
             <nav className="hidden flex-1 items-center gap-8 lg:flex">
               {NAV.map((n) => (
                 <Link key={n.label} to={n.to} data-testid={`nav-${n.label.toLowerCase()}`} className="link-underline text-[12px] font-semibold uppercase tracking-luxe-sm">{n.label}</Link>
@@ -80,7 +79,7 @@ export default function Header() {
             <button onClick={() => setMenuOpen(true)} data-testid="mobile-menu-open" className="lg:hidden"><Menu size={22} /></button>
 
             {/* Logo */}
-            <Link to="/" data-testid="logo" className="mx-auto font-display text-2xl font-extrabold uppercase tracking-[0.3em]">
+            <Link to="/" data-testid="logo" className="col-start-2 justify-self-center font-display text-2xl font-extrabold uppercase tracking-[0.3em]">
               StoreX
             </Link>
 
