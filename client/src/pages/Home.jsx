@@ -80,7 +80,7 @@ export default function Home() {
             animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 1.6, ease }}
             style={{ x: mouse.x * -18, y: mouse.y * -18 }}
-            className="h-full w-full object-cover object-center"
+            className="h-full w-full object-cover object-top"
           />
           <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/40 to-black/10" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/30" />

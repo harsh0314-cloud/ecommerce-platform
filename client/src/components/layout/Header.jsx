@@ -85,7 +85,7 @@ export default function Header() {
             </Link>
 
             {/* Right icons */}
-            <div className="flex flex-1 items-center justify-end gap-1 sm:gap-2">
+            <div className="flex items-center justify-end gap-1 sm:gap-2">
               <button onClick={() => setSearchOpen(true)} data-testid="search-open" className={iconBtn} aria-label="Search"><Search size={19} /></button>
               <Link to="/wishlist" data-testid="wishlist-link" className={iconBtn} aria-label="Wishlist">
                 <Heart size={19} />
