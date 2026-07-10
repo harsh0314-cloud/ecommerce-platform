@@ -70,8 +70,8 @@ export default function Home() {
 
   return (
     <div className="bg-background overflow-x-hidden">
-      {/* HERO */}
-      <section ref={heroRef} onMouseMove={handleMouse} className="relative min-h-[85vh] md:h-screen overflow-hidden bg-ink text-white">
+            {/* HERO */}
+      <section ref={heroRef} onMouseMove={handleMouse} className="relative h-[100dvh] md:h-screen overflow-hidden bg-ink text-white">
         <motion.div style={{ y: imgY }} className="absolute inset-0 z-0">
           <motion.img
             src={HERO}
@@ -80,27 +80,27 @@ export default function Home() {
             animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 1.6, ease }}
             style={{ x: mouse.x * -18, y: mouse.y * -18 }}
-            className="h-full w-full object-cover object-top"
+            className="h-full w-full object-cover object-top md:object-center"
           />
           <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/40 to-black/10" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/30" />
         </motion.div>
 
-        <div className="container-luxe relative z-10 flex h-full flex-col justify-end pb-[14vh]">
-          <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5, duration: 0.8, ease }} className="overline mb-5 text-white/70">
+        <div className="container-luxe relative z-10 flex h-full flex-col justify-end pb-[8vh] md:pb-[14vh]">
+          <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5, duration: 0.8, ease }} className="overline mb-4 md:mb-5 text-white/70">
             Autumn / Winter 2026
           </motion.p>
           <motion.div initial={{ opacity: 0, y: 60 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35, duration: 1, ease }} style={{ x: mouse.x * 12 }}>
-            <h1 className="font-display text-[17vw] font-extrabold uppercase leading-[0.82] tracking-tighter text-white drop-shadow-[0_2px_40px_rgba(0,0,0,0.7)] sm:text-[14vw] lg:text-[11vw]">
+            <h1 className="font-display text-[15vw] font-extrabold uppercase leading-[0.85] tracking-tighter text-white drop-shadow-[0_2px_40px_rgba(0,0,0,0.7)] sm:text-[14vw] lg:text-[11vw]">
               The Icon
             </h1>
           </motion.div>
-          <div className="mt-6 flex flex-col justify-between gap-8 sm:flex-row sm:items-end">
-            <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.9, duration: 1 }} className="max-w-md text-base font-light text-white/75">
+          <div className="mt-4 md:mt-6 flex flex-col justify-between gap-6 md:gap-8 sm:flex-row sm:items-end">
+            <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.9, duration: 1 }} className="max-w-xs md:max-w-md text-sm md:text-base font-light text-white/75">
               A study in restraint. Elevated staples cut from the finest fabrics — the wardrobe, distilled.
             </motion.p>
             <Magnetic>
-              <Link to="/products" data-testid="hero-cta" className="group inline-flex items-center gap-3 bg-white px-10 py-4 text-[11px] font-semibold uppercase tracking-luxe-sm text-foreground transition-colors hover:bg-gold hover:text-white">
+              <Link to="/products" data-testid="hero-cta" className="group inline-flex items-center gap-3 bg-white px-8 py-3.5 md:px-10 md:py-4 text-[11px] font-semibold uppercase tracking-luxe-sm text-foreground transition-colors hover:bg-gold hover:text-white">
                 Shop The Collection
                 <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
               </Link>
@@ -108,7 +108,7 @@ export default function Home() {
           </div>
         </div>
 
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.4 }} className="absolute bottom-8 left-1/2 z-10 -translate-x-1/2 flex flex-col items-center gap-2 text-white/60">
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.4 }} className="hidden md:flex absolute bottom-8 left-1/2 z-10 -translate-x-1/2 flex-col items-center gap-2 text-white/60">
           <span className="text-[10px] uppercase tracking-luxe-sm">Scroll</span>
           <motion.div animate={{ y: [0, 8, 0] }} transition={{ repeat: Infinity, duration: 1.8 }}><ArrowDown size={16} /></motion.div>
         </motion.div>
