@@ -38,15 +38,15 @@ export default function Checkout() {
     }
   };
 
-  const handleSubmit = async (e) => {
+    const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
       if (paymentMethod === 'COD') {
-        await api.post('/orders', { ...form, paymentMethod: 'CASH_ON_DELIVERY' });
+        const response = await api.post('/orders', { ...form, paymentMethod: 'CASH_ON_DELIVERY' });
         toast.success('Order placed successfully!');
         await fetchCart();
-        navigate(`/payment/success?orderId=${orderRes.data.order.id}`);
+        navigate(`/payment/success?orderId=${response.data.order.id}`);
       } else {
         const res = await api.post('/payments/create-checkout-session', form);
         const stripeUrl = res.data.url;
