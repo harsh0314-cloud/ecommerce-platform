@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Home, LayoutGrid, Search, Heart, ShoppingBag, User } from 'lucide-react';
 import useAuthStore from '../../store/authStore';
@@ -17,6 +17,7 @@ const navItems = [
 
 export default function MobileNav({ onOpenSearch, onOpenCategories }) {
   const location = useLocation();
+   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('/');
   
   const { isAuthenticated } = useAuthStore();
@@ -32,7 +33,7 @@ export default function MobileNav({ onOpenSearch, onOpenCategories }) {
     if (item.isAction === 'search') {
       onOpenSearch(); // We will wire this up in App.jsx next
     } else if (item.isAction === 'category') {
-      onOpenCategories(); // We will wire this up in App.jsx next
+      navigate('/products');
     }
   };
 
