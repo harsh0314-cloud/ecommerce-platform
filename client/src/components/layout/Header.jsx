@@ -79,7 +79,7 @@ export default function Header() {
             <button onClick={() => setMenuOpen(true)} data-testid="mobile-menu-open" className="lg:hidden"><Menu size={22} /></button>
 
             {/* Logo */}
-            <Link to="/" data-testid="logo" className="col-start-2 justify-self-center font-display text-lg font-extrabold uppercase tracking-[0.2em] md:text-2xl md:tracking-[0.3em]">
+            <Link to="/" data-testid="logo" className="col-start-2 justify-self-start md:justify-self-center font-display text-lg font-extrabold uppercase tracking-[0.2em] md:text-2xl md:tracking-[0.3em]">
               StoreX
             </Link>
 
