@@ -20,7 +20,6 @@ export default function Header() {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
-  const [mobileSearchTrigger, setMobileSearchTrigger] = useState(false); // NEW STATE
   const [cartOpen, setCartOpen] = useState(false);
   const [query, setQuery] = useState('');
 
@@ -30,6 +29,7 @@ export default function Header() {
   const { count: wishCount } = useWishlist();
   const navigate = useNavigate();
   const location = useLocation();
+  const [mobileSearchTrigger, setMobileSearchTrigger] = useState(false);
 
   const isHome = location.pathname === '/';
   const transparent = isHome && !scrolled;
@@ -49,26 +49,15 @@ export default function Header() {
     return () => window.removeEventListener('open-cart', open);
   }, []);
 
-  // NEW EFFECT: Listen for Mobile Nav Search Tap
-  useEffect(() => {
-    const openSearch = () => setMobileSearchTrigger(true);
-    window.addEventListener('open-search', openSearch);
-    return () => window.removeEventListener('open-search', openSearch);
-  }, []);
-
-  useEffect(() => { setMenuOpen(false); setSearchOpen(false); setMobileSearchTrigger(false); }, [location.pathname, location.search]);
+  useEffect(() => { setMenuOpen(false); setSearchOpen(false); }, [location.pathname, location.search]);
 
   const submitSearch = (e) => {
     e.preventDefault();
-    if (query.trim()) { navigate(`/products?search=${encodeURIComponent(query.trim())}`); setQuery(''); setSearchOpen(false); setMobileSearchTrigger(false); }
+    if (query.trim()) { navigate(`/products?search=${encodeURIComponent(query.trim())}`); setQuery(''); setSearchOpen(false); }
   };
 
   const dark = transparent;
   const iconBtn = `relative flex h-10 w-10 items-center justify-center transition-opacity hover:opacity-60`;
-
-  // Combined state for Search Overlay
-  const isSearchVisible = searchOpen || mobileSearchTrigger;
-  const closeSearch = () => { setSearchOpen(false); setMobileSearchTrigger(false); };
 
   return (
     <>
@@ -80,8 +69,7 @@ export default function Header() {
         data-testid="site-header"
       >
         <div className="container-luxe">
-          <div className={`flex items-center justify-between lg:grid lg:grid-cols-3 transition-all duration-500 ${scrolled ? 'h-16' : 'h-20'} ${dark ? 'text-white' : 'text-foreground'}`}>
-            {/* Left nav (desktop) */}
+            <div className={`flex items-center justify-between lg:grid lg:grid-cols-3 transition-all duration-500 ${scrolled ? 'h-16' : 'h-20'} ${dark ? 'text-white' : 'text-foreground'}`}> 
             <nav className="hidden flex-1 items-center gap-8 lg:flex">
               {NAV.map((n) => (
                 <Link key={n.label} to={n.to} data-testid={`nav-${n.label.toLowerCase()}`} className="link-underline text-[12px] font-semibold uppercase tracking-luxe-sm">{n.label}</Link>
@@ -92,7 +80,7 @@ export default function Header() {
             <button onClick={() => setMenuOpen(true)} data-testid="mobile-menu-open" className="lg:hidden"><Menu size={22} /></button>
 
             {/* Logo */}
-            <Link to="/" data-testid="logo" className="flex-1 text-center lg:flex-none lg:col-start-2 lg:justify-self-center font-display text-lg font-extrabold uppercase tracking-[0.2em] md:text-2xl md:tracking-[0.3em]">
+            <Link to="/" data-testid="logo" className="flex-1 text-center lg:flex-none lg:col-start-2 lg:justify-self-center font-display text-lg font-extrabold uppercase tracking-[0.2em] md:text-2xl md:tracking-[0.3em]">      
               StoreX
             </Link>
 
@@ -122,10 +110,10 @@ export default function Header() {
 
       {/* Search overlay */}
       <AnimatePresence>
-        {isSearchVisible && (
+        {searchOpen && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.4 }} className="fixed inset-0 z-[80] bg-white" data-testid="search-overlay">
             <div className="container-luxe pt-8">
-              <div className="flex justify-end"><button onClick={closeSearch} data-testid="search-close" className="transition-transform hover:rotate-90"><X size={24} /></button></div>
+              <div className="flex justify-end"><button onClick={() => setSearchOpen(false)} data-testid="search-close" className="transition-transform hover:rotate-90"><X size={24} /></button></div>
               <motion.form onSubmit={submitSearch} initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.15, duration: 0.6, ease }} className="mx-auto mt-[12vh] max-w-3xl">
                 <p className="overline mb-6 text-muted-foreground">Search the collection</p>
                 <div className="flex items-center gap-4 border-b-2 border-foreground pb-4">
@@ -134,7 +122,7 @@ export default function Header() {
                 </div>
                 <div className="mt-8 flex flex-wrap gap-3">
                   {['Hoodies', 'Jackets', 'Sneakers', 'Trousers'].map((t) => (
-                    <button key={t} type="button" onClick={() => { navigate(`/products?search=${t}`); closeSearch(); }} className="border border-border px-5 py-2 text-xs uppercase tracking-luxe-sm transition-colors hover:bg-foreground hover:text-white">{t}</button>
+                    <button key={t} type="button" onClick={() => { navigate(`/products?search=${t}`); setSearchOpen(false); }} className="border border-border px-5 py-2 text-xs uppercase tracking-luxe-sm transition-colors hover:bg-foreground hover:text-white">{t}</button>
                   ))}
                 </div>
               </motion.form>
@@ -143,31 +131,113 @@ export default function Header() {
         )}
       </AnimatePresence>
 
-      {/* Mobile menu */}
+      {/* Premium Mobile Menu - Bottom Sheet Style */}
       <AnimatePresence>
         {menuOpen && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[80] bg-foreground text-white" data-testid="mobile-menu">
-            <div className="container-luxe flex h-20 items-center justify-between">
-              <span className="font-display text-2xl font-extrabold uppercase tracking-[0.3em]">StoreX</span>
-              <button onClick={() => setMenuOpen(false)} data-testid="mobile-menu-close"><X size={24} /></button>
-            </div>
-            <nav className="container-luxe mt-10 flex flex-col gap-2">
-              {NAV.map((n, i) => (
-                <motion.div key={n.label} initial={{ x: -30, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ delay: 0.1 + i * 0.07 }}>
-                  <Link to={n.to} className="font-display text-5xl font-bold tracking-tight">{n.label}</Link>
-                </motion.div>
-              ))}
-              <div className="mt-10 flex flex-col gap-4 border-t border-white/20 pt-8 text-sm uppercase tracking-luxe-sm">
-                <Link to="/wishlist">Wishlist ({wishCount})</Link>
-                {isAuthenticated ? (
-                  <>
-                    <Link to="/profile">My Account</Link>
-                    <button onClick={() => { logout(); navigate('/'); setMenuOpen(false); }} className="text-left">Logout</button>
-                  </>
-                ) : <Link to="/login">Sign In</Link>}
+          <div className="fixed inset-0 z-[80]">
+            {/* Dark Backdrop */}
+            <motion.div 
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }} 
+              exit={{ opacity: 0 }} 
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm" 
+              onClick={() => setMenuOpen(false)} 
+            />
+            
+            {/* Sliding Menu Panel */}
+            <motion.div 
+              initial={{ y: "100%" }} 
+              animate={{ y: 0 }} 
+              exit={{ y: "100%" }} 
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              className="absolute inset-x-0 bottom-0 top-[15%] rounded-t-3xl bg-foreground text-white shadow-2xl overflow-y-auto"
+              style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}
+            >
+              {/* Drag Handle */}
+              <div className="flex justify-center pt-3 pb-2">
+                <div className="h-1 w-10 rounded-full bg-white/30" />
               </div>
-            </nav>
-          </motion.div>
+
+              <div className="container-luxe px-6 pb-6 pt-4">
+                {/* Header */}
+                <div className="mb-8 flex items-center justify-between">
+                  <span className="font-display text-xl font-extrabold uppercase tracking-[0.2em]">Menu</span>
+                  <button onClick={() => setMenuOpen(false)} data-testid="mobile-menu-close" className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 transition-colors hover:bg-white/20">
+                    <X size={20} />
+                  </button>
+                </div>
+                
+                {/* Main Navigation Links */}
+                <nav className="space-y-1">
+                  {NAV.map((n, i) => (
+                    <motion.div 
+                      key={n.label} 
+                      initial={{ opacity: 0, x: -20 }} 
+                      animate={{ opacity: 1, x: 0 }} 
+                      transition={{ delay: 0.05 * i, type: "spring", stiffness: 300, damping: 25 }}
+                    >
+                      <Link 
+                        to={n.to} 
+                        onClick={() => setMenuOpen(false)}
+                        className="group flex items-center justify-between py-4 border-b border-white/10 text-2xl font-display font-bold tracking-tight transition-colors hover:text-gold"
+                      >
+                        {n.label}
+                        <span className="text-2xl text-white/20 transition-all group-hover:translate-x-1 group-hover:text-gold">→</span>
+                      </Link>
+                    </motion.div>
+                  ))}
+                </nav>
+
+                {/* User Profile & Actions Card */}
+                <div className="mt-10 rounded-2xl bg-white/5 p-6 backdrop-blur-sm border border-white/10">
+                  {isAuthenticated ? (
+                    <div className="flex items-center gap-4 mb-6">
+                      <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gold/20 text-gold font-display text-xl font-bold">
+                        {user?.firstName?.[0]}{user?.lastName?.[0]}
+                      </div>
+                      <div>
+                        <p className="font-semibold text-white">{user?.firstName} {user?.lastName}</p>
+                        <p className="text-sm text-white/50">{user?.email}</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="mb-6 text-center">
+                      <p className="text-sm text-white/50 mb-1">Welcome to StoreX</p>
+                      <p className="text-xs text-white/30">Sign in for a personalized experience</p>
+                    </div>
+                  )}
+                  
+                  <div className="space-y-1 text-sm font-semibold uppercase tracking-luxe-sm">
+                    <Link to="/wishlist" onClick={() => setMenuOpen(false)} className="flex items-center justify-between py-3 border-b border-white/10 hover:text-gold transition-colors">
+                      <span>Wishlist</span> 
+                      <span className="text-white/40 font-normal">({wishCount})</span>
+                    </Link>
+                    
+                    {isAuthenticated ? (
+                      <>
+                        <Link to="/profile" onClick={() => setMenuOpen(false)} className="block py-3 border-b border-white/10 hover:text-gold transition-colors">My Account</Link>
+                        {user?.role === 'ADMIN' && (
+                          <Link to="/admin" onClick={() => setMenuOpen(false)} className="block py-3 border-b border-white/10 hover:text-gold transition-colors">Admin Dashboard</Link>
+                        )}
+                        <button onClick={() => { logout(); navigate('/'); setMenuOpen(false); }} className="block w-full text-left py-3 text-red-400 hover:text-red-300 transition-colors">
+                          Logout
+                        </button>
+                      </>
+                    ) : (
+                      <div className="grid grid-cols-2 gap-3 pt-4">
+                        <Link to="/login" onClick={() => setMenuOpen(false)} className="flex-1 rounded-xl bg-white py-3 text-center text-black font-bold transition-opacity hover:opacity-80">
+                          Sign In
+                        </Link>
+                        <Link to="/register" onClick={() => setMenuOpen(false)} className="flex-1 rounded-xl border border-white/30 py-3 text-center transition-colors hover:bg-white/10">
+                          Register
+                        </Link>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
 
