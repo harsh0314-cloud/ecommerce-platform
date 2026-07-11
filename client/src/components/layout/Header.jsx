@@ -79,12 +79,12 @@ export default function Header() {
             <button onClick={() => setMenuOpen(true)} data-testid="mobile-menu-open" className="lg:hidden"><Menu size={22} /></button>
 
             {/* Logo */}
-            <Link to="/" data-testid="logo" className="col-start-2 justify-self-center font-display text-2xl font-extrabold uppercase tracking-[0.3em]">
+            <Link to="/" data-testid="logo" className="col-start-2 justify-self-center font-display text-lg font-extrabold uppercase tracking-[0.2em] md:text-2xl md:tracking-[0.3em]">
               StoreX
             </Link>
 
             {/* Right icons */}
-            <div className="flex items-center justify-end gap-1 sm:gap-2">
+            <div className="flex shrink-0 items-center justify-end gap-0.5 sm:gap-2">
               <button onClick={() => setSearchOpen(true)} data-testid="search-open" className={iconBtn} aria-label="Search"><Search size={19} /></button>
               <Link to="/wishlist" data-testid="wishlist-link" className={iconBtn} aria-label="Wishlist">
                 <Heart size={19} />
