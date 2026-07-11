@@ -20,6 +20,7 @@ export default function Header() {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [mobileSearchTrigger, setMobileSearchTrigger] = useState(false); // NEW STATE
   const [cartOpen, setCartOpen] = useState(false);
   const [query, setQuery] = useState('');
 
@@ -48,15 +49,26 @@ export default function Header() {
     return () => window.removeEventListener('open-cart', open);
   }, []);
 
-  useEffect(() => { setMenuOpen(false); setSearchOpen(false); }, [location.pathname, location.search]);
+  // NEW EFFECT: Listen for Mobile Nav Search Tap
+  useEffect(() => {
+    const openSearch = () => setMobileSearchTrigger(true);
+    window.addEventListener('open-search', openSearch);
+    return () => window.removeEventListener('open-search', openSearch);
+  }, []);
+
+  useEffect(() => { setMenuOpen(false); setSearchOpen(false); setMobileSearchTrigger(false); }, [location.pathname, location.search]);
 
   const submitSearch = (e) => {
     e.preventDefault();
-    if (query.trim()) { navigate(`/products?search=${encodeURIComponent(query.trim())}`); setQuery(''); setSearchOpen(false); }
+    if (query.trim()) { navigate(`/products?search=${encodeURIComponent(query.trim())}`); setQuery(''); setSearchOpen(false); setMobileSearchTrigger(false); }
   };
 
   const dark = transparent;
   const iconBtn = `relative flex h-10 w-10 items-center justify-center transition-opacity hover:opacity-60`;
+
+  // Combined state for Search Overlay
+  const isSearchVisible = searchOpen || mobileSearchTrigger;
+  const closeSearch = () => { setSearchOpen(false); setMobileSearchTrigger(false); };
 
   return (
     <>
@@ -68,7 +80,8 @@ export default function Header() {
         data-testid="site-header"
       >
         <div className="container-luxe">
-            <div className={`flex items-center justify-between lg:grid lg:grid-cols-3 transition-all duration-500 ${scrolled ? 'h-16' : 'h-20'} ${dark ? 'text-white' : 'text-foreground'}`}> 
+          <div className={`flex items-center justify-between lg:grid lg:grid-cols-3 transition-all duration-500 ${scrolled ? 'h-16' : 'h-20'} ${dark ? 'text-white' : 'text-foreground'}`}>
+            {/* Left nav (desktop) */}
             <nav className="hidden flex-1 items-center gap-8 lg:flex">
               {NAV.map((n) => (
                 <Link key={n.label} to={n.to} data-testid={`nav-${n.label.toLowerCase()}`} className="link-underline text-[12px] font-semibold uppercase tracking-luxe-sm">{n.label}</Link>
@@ -79,7 +92,7 @@ export default function Header() {
             <button onClick={() => setMenuOpen(true)} data-testid="mobile-menu-open" className="lg:hidden"><Menu size={22} /></button>
 
             {/* Logo */}
-            <Link to="/" data-testid="logo" className="flex-1 text-center lg:flex-none lg:col-start-2 lg:justify-self-center font-display text-lg font-extrabold uppercase tracking-[0.2em] md:text-2xl md:tracking-[0.3em]">      
+            <Link to="/" data-testid="logo" className="flex-1 text-center lg:flex-none lg:col-start-2 lg:justify-self-center font-display text-lg font-extrabold uppercase tracking-[0.2em] md:text-2xl md:tracking-[0.3em]">
               StoreX
             </Link>
 
@@ -109,10 +122,10 @@ export default function Header() {
 
       {/* Search overlay */}
       <AnimatePresence>
-        {searchOpen && (
+        {isSearchVisible && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.4 }} className="fixed inset-0 z-[80] bg-white" data-testid="search-overlay">
             <div className="container-luxe pt-8">
-              <div className="flex justify-end"><button onClick={() => setSearchOpen(false)} data-testid="search-close" className="transition-transform hover:rotate-90"><X size={24} /></button></div>
+              <div className="flex justify-end"><button onClick={closeSearch} data-testid="search-close" className="transition-transform hover:rotate-90"><X size={24} /></button></div>
               <motion.form onSubmit={submitSearch} initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.15, duration: 0.6, ease }} className="mx-auto mt-[12vh] max-w-3xl">
                 <p className="overline mb-6 text-muted-foreground">Search the collection</p>
                 <div className="flex items-center gap-4 border-b-2 border-foreground pb-4">
@@ -121,7 +134,7 @@ export default function Header() {
                 </div>
                 <div className="mt-8 flex flex-wrap gap-3">
                   {['Hoodies', 'Jackets', 'Sneakers', 'Trousers'].map((t) => (
-                    <button key={t} type="button" onClick={() => { navigate(`/products?search=${t}`); setSearchOpen(false); }} className="border border-border px-5 py-2 text-xs uppercase tracking-luxe-sm transition-colors hover:bg-foreground hover:text-white">{t}</button>
+                    <button key={t} type="button" onClick={() => { navigate(`/products?search=${t}`); closeSearch(); }} className="border border-border px-5 py-2 text-xs uppercase tracking-luxe-sm transition-colors hover:bg-foreground hover:text-white">{t}</button>
                   ))}
                 </div>
               </motion.form>

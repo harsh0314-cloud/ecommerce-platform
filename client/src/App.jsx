@@ -89,7 +89,10 @@ function App() {
         <Header />
         <AnimatedRoutes />
         <Footer />
-        <MobileNav />
+        <MobileNav 
+          onOpenSearch={() => window.dispatchEvent(new Event('open-search'))} 
+          onOpenCategories={() => window.dispatchEvent(new Event('open-categories'))}
+        />
       </div>
     </BrowserRouter>
   );
