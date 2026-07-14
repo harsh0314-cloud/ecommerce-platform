@@ -12,15 +12,18 @@ export default function Checkout() {
   const { items, total: cartSubtotal, fetchCart } = useCartStore();
   const navigate = useNavigate();
 
-  const [form, setForm] = useState({ firstName: '', lastName: '', phone: '', addressLine1: '', city: '', state: '', postalCode: '', country: 'US' });
-  const [paymentMethod, setPaymentMethod] = useState('STRIPE');
+  // Changed default country to IN and default payment to ONLINE
+  const [form, setForm] = useState({ firstName: '', lastName: '', phone: '', addressLine1: '', city: '', state: '', postalCode: '', country: 'IN' });
+  const [paymentMethod, setPaymentMethod] = useState('ONLINE');
   const [couponCode, setCouponCode] = useState('');
   const [discount, setDiscount] = useState(0);
   const [couponMessage, setCouponMessage] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const tax = cartSubtotal * 0.10;
-  const shipping = cartSubtotal > 50 ? 0 : 10;
+  // Updated to Indian GST (18%)
+  const tax = cartSubtotal * 0.18;
+  // Updated to Indian shipping logic (Free over ₹500, otherwise ₹99)
+  const shipping = cartSubtotal > 500 ? 0 : 99;
   const finalTotal = Math.max(0, cartSubtotal + tax + shipping - discount).toFixed(2);
   const updateForm = (field, value) => setForm({ ...form, [field]: value });
 
@@ -38,7 +41,7 @@ export default function Checkout() {
     }
   };
 
-    const handleSubmit = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
@@ -48,10 +51,10 @@ export default function Checkout() {
         await fetchCart();
         navigate(`/payment/success?orderId=${response.data.order.id}`);
       } else {
-        const res = await api.post('/payments/create-checkout-session', form);
-        const stripeUrl = res.data.url;
-        if (stripeUrl) { window.location.href = stripeUrl; return; }
-        toast.error('Failed to create payment session');
+        // NEXT STEP: We will replace this dummy call with the actual Razorpay SDK integration
+        const res = await api.post('/payments/create-razorpay-order', { ...form });
+        // The backend will return a Razorpay Order ID here, which we will use to open the payment modal
+        toast.info("Razorpay integration is next!");
       }
     } catch (error) {
       toast.error(error.message || 'Failed to initiate payment');
@@ -95,8 +98,7 @@ export default function Checkout() {
               <h2 className="mb-8 font-display text-lg font-bold uppercase tracking-luxe-sm">02 — Payment</h2>
               <div className="space-y-3">
                 {[
-                  { id: 'STRIPE', label: 'Credit / Debit Card', sub: 'Visa, Mastercard, Amex' },
-                  { id: 'UPI', label: 'UPI / QR Code', sub: 'Google Pay, PhonePe (UI only)' },
+                  { id: 'ONLINE', label: 'UPI / Credit / Debit Card', sub: 'Razorpay, PhonePe, GPay' },
                   { id: 'COD', label: 'Cash on Delivery', sub: 'Pay when you receive' },
                 ].map((m) => (
                   <label key={m.id} data-testid={`payment-${m.id}`} className={`flex cursor-pointer items-center gap-4 border p-5 transition-colors ${paymentMethod === m.id ? 'border-foreground bg-surface' : 'border-border hover:border-foreground/40'}`}>
@@ -130,13 +132,13 @@ export default function Checkout() {
           <div className="mt-6 space-y-2 border-t border-border pt-6 text-sm">
             <div className="flex justify-between"><span className="text-muted-foreground">Subtotal</span><span>{fmtPrice(cartSubtotal)}</span></div>
             <div className="flex justify-between"><span className="text-muted-foreground">Shipping</span><span>{shipping === 0 ? 'Free' : fmtPrice(shipping)}</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Tax (10%)</span><span>${tax.toFixed(2)}</span></div>
-            {discount > 0 && <div className="flex justify-between text-green-700"><span>Discount</span><span>-${discount.toFixed(2)}</span></div>}
+            <div className="flex justify-between"><span className="text-muted-foreground">GST (18%)</span><span>₹{Math.round(tax).toLocaleString('en-IN')}</span></div>
+            {discount > 0 && <div className="flex justify-between text-green-700"><span>Discount</span><span>-₹{Math.round(discount).toLocaleString('en-IN')}</span></div>}
           </div>
-          <div className="mt-4 flex justify-between border-t border-border pt-4 font-display text-lg font-bold"><span>Total</span><span>${finalTotal}</span></div>
+          <div className="mt-4 flex justify-between border-t border-border pt-4 font-display text-lg font-bold"><span>Total</span><span>₹{Math.round(finalTotal).toLocaleString('en-IN')}</span></div>
 
           <button type="submit" form="checkout-form" disabled={loading} data-testid="place-order-btn" className="mt-8 w-full bg-foreground py-4 text-[12px] font-semibold uppercase tracking-luxe-sm text-white transition-colors hover:bg-gold disabled:opacity-50">
-            {loading ? 'Processing…' : (paymentMethod === 'COD' ? `Place Order · $${finalTotal}` : `Pay · $${finalTotal}`)}
+            {loading ? 'Processing…' : (paymentMethod === 'COD' ? `Place Order · ₹${Math.round(finalTotal).toLocaleString('en-IN')}` : `Pay · ₹${Math.round(finalTotal).toLocaleString('en-IN')}`)}
           </button>
         </div>
       </div>

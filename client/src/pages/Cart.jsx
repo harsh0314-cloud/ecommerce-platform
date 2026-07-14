@@ -25,7 +25,6 @@ export default function Cart() {
   return (
     <div className="container-luxe py-14">
       <h1 className="mb-12 font-display text-5xl font-bold tracking-tight sm:text-6xl">Shopping Bag</h1>
-
       <div className="grid gap-12 lg:grid-cols-3">
         <div className="lg:col-span-2">
           {items.map((item, i) => (
@@ -60,9 +59,9 @@ export default function Cart() {
           <h2 className="font-display text-lg font-bold uppercase tracking-luxe-sm">Order Summary</h2>
           <div className="mt-6 space-y-3 text-sm">
             <div className="flex justify-between"><span className="text-muted-foreground">Subtotal</span><span className="font-semibold">{fmtPrice(total)}</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Shipping</span><span className="font-semibold">{total > 50 ? 'Free' : '$10'}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Shipping</span><span className="font-semibold">{total > 500 ? 'Free' : '₹99'}</span></div>
+            <div className="mt-4 flex justify-between border-t border-border pt-4 font-display text-lg font-bold"><span>Total</span><span>{fmtPrice(total > 500 ? total : total + 99)}</span></div>
           </div>
-          <div className="mt-4 flex justify-between border-t border-border pt-4 font-display text-lg font-bold"><span>Total</span><span>{fmtPrice(total > 50 ? total : total + 10)}</span></div>
           <button onClick={() => navigate('/checkout')} data-testid="checkout-btn" className="mt-8 flex w-full items-center justify-center gap-2 bg-foreground py-4 text-[12px] font-semibold uppercase tracking-luxe-sm text-white transition-colors hover:bg-gold">
             Checkout <ArrowRight size={15} />
           </button>

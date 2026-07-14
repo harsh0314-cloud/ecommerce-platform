@@ -8,7 +8,7 @@ import useWishlist from '../hooks/useWishlist';
 
 export const fmtPrice = (v) => {
   const n = typeof v === 'string' ? parseFloat(v) : Number(v);
-  return Number.isFinite(n) ? `$${n.toFixed(0)}` : v;
+  return Number.isFinite(n) ? `₹${n.toLocaleString('en-IN')}` : v;
 };
 
 export default function ProductCard({ product, index = 0 }) {
