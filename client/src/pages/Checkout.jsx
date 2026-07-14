@@ -1,3 +1,4 @@
+import Razorpay from 'razorpay';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCartStore } from '../store/cartStore';
@@ -49,11 +50,39 @@ export default function Checkout() {
         toast.success('Order placed successfully!');
         await fetchCart();
         navigate(`/payment/success?orderId=${response.data.order.id}`);
-      } else {
-        // NEXT STEP: We will replace this dummy call with the actual Razorpay SDK integration
+            } else {
         const res = await api.post('/payments/create-razorpay-order', { ...form });
-        // The backend will return a Razorpay Order ID here, which we will use to open the payment modal
-        toast.info("Razorpay integration is next!");
+        const options = {
+          key: res.data.key,
+          amount: res.data.amount,
+          currency: res.data.currency,
+          name: res.data.name,
+          description: res.data.description,
+          order_id: res.data.order_id,
+          prefill: res.data.prefill,
+          theme: res.data.theme,
+          handler: async function (response) {
+            // 1. Verify payment on backend
+            await api.post('/payments/verify-razorpay', {
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+            });
+            
+            // 2. Clear cart and redirect to success page
+            await fetchCart();
+            toast.success('Payment successful!');
+            navigate(`/payment/success?orderId=${res.data.orderId}`);
+          },
+          modal: {
+            ondismiss: function () {
+              toast.error('Payment cancelled');
+              setLoading(false);
+            }
+          }
+        };
+        
+        const rzp = new Razorpay(options);
+        rzp.open();
       }
     } catch (error) {
       toast.error(error.message || 'Failed to initiate payment');
