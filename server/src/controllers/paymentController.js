@@ -1,4 +1,5 @@
 const razorpay = require('razorpay');
+const crypto = require('crypto');
 const { AppError } = require('../utils/AppError');
 
 // 1. Create Razorpay Order ID
@@ -13,12 +14,12 @@ exports.createRazorpayOrder = async (req, res, next) => {
     });
 
     if (!cart || cart.items.length === 0) {
-      return next(new AppError('Your cart is empty', 400);
+      return next(new AppError('Your cart is empty', 400));
     }
 
     // 2. Calculate Totals (Exactly like your order controller)
     const subtotal = cart.items.reduce((sum, item) => sum + (parseFloat(item.product.price) * item.quantity), 0);
-    const tax = parseFloat((subtotal * 0.18).toFixed(2));
+    const tax = parseFloat((subtotal * 0.18).toFixed(2);
     const shippingCost = subtotal > 500 ? 0 : 40;
     const total = parseFloat((subtotal + tax + shippingCost).toFixed(2));
 
@@ -53,14 +54,14 @@ exports.createRazorpayOrder = async (req, res, next) => {
       }
     });
 
-    // 5. Create Razorpay Backend Order (Amount MUST be in paise)
+    // 5. Create Razorpay Backend Order
     const instance = new razorpay({
       key_id: process.env.RAZORPAY_KEY_ID,
       key_secret: process.env.RAZORPAY_KEY_SECRET,
     });
 
     const razorpayOrder = await instance.orders.create({
-      amount: Math.round(total * 100), // Converts ₹500 to 50000 paise
+      amount: Math.round(total * 100), // Converts ₹ to paise
       currency: "INR",
       receipt: order.orderNumber,
       notes: { name: `${firstName} ${lastName}`, email: req.user.email },
@@ -70,8 +71,8 @@ exports.createRazorpayOrder = async (req, res, next) => {
     await req.prisma.cartItem.deleteMany({ where: { cartId: cart.id } });
 
     // 7. Send details to frontend
-    res.status(200).json({ 
-      status: 'success', 
+    res.status(200).json({
+      status: 'success',
       data: {
         key: process.env.RAZORPAY_KEY_ID,
         amount: razorpayOrder.amount,
@@ -79,12 +80,12 @@ exports.createRazorpayOrder = async (req, res, next) => {
         name: "StoreX Purchase",
         description: `Order ${order.orderNumber}`,
         order_id: razorpayOrder.id,
-        orderId: order.id, // Send real DB order ID so we can redirect to success page
+        orderId: order.id,
         prefill: {
           name: `${firstName} ${lastName}`,
           contact: phone,
         },
-        theme: { color: "#111111" } // Matches your premium dark theme
+        theme: { color: "#111111" }
       }
     });
   } catch (error) {
@@ -92,27 +93,23 @@ exports.createRazorpayOrder = async (req, res, next) => {
   }
 };
 
-// 2. Webhook to verify payment and update order to CONFIRMED
+// 2. Webhook to verify payment
 exports.verifyRazorpayPayment = async (req, res, next) => {
   try {
     const { razorpay_order_id, razorpay_payment_id } = req.body;
-
-    // Verify the signature (Crucial for security)
-    const crypto = require('crypto');
     const secret = process.env.RAZORPAY_KEY_SECRET;
 
     const body = razorpay_order_id + "|" + req.headers['x-razorpay-signature'];
     const expectedSignature = crypto.createHmac('sha256', secret).update(body).digest('hex');
 
     if (expectedSignature === req.headers['x-razorpay-signature']) {
-      // Find the order and mark as CONFIRMED
       const order = await req.prisma.order.findFirst({ where: { orderNumber: razorpay_order_id.replace('pay_', '') } });
       if (order) {
         await req.prisma.order.update({ where: { id: order.id }, data: { status: 'CONFIRMED' } });
       }
       res.status(200).json({ status: 'success', message: 'Payment verified' });
     } else {
-      return next(new AppError('Invalid payment signature', 400);
+      return next(new AppError('Invalid payment signature', 400));
     }
   } catch (error) {
     next(error);
