@@ -22,8 +22,7 @@ export default function Checkout() {
 
   // Updated to Indian GST (18%)
   const tax = cartSubtotal * 0.18;
-  // Updated to Indian shipping logic (Free over ₹500, otherwise ₹99)
-  const shipping = cartSubtotal > 500 ? 0 : 99;
+  const shipping = cartSubtotal > 500 ? 0 : 40;
   const finalTotal = Math.max(0, cartSubtotal + tax + shipping - discount).toFixed(2);
   const updateForm = (field, value) => setForm({ ...form, [field]: value });
 
@@ -32,7 +31,7 @@ export default function Checkout() {
     try {
       const res = await api.post('/orders/validate-coupon', { code: couponCode, subtotal: cartSubtotal });
       setDiscount(parseFloat(res.data.discount));
-      setCouponMessage(res.data.message);
+      setCouponMessage(res.data.message.replace('$', '₹'));
       toast.success(res.data.message);
     } catch (error) {
       setDiscount(0);
