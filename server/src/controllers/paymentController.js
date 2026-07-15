@@ -40,7 +40,6 @@ exports.createRazorpayOrder = async (req, res, next) => {
         tax: tax.toFixed(2),
         total: total.toFixed(2),
         status: 'PENDING',
-        paymentMethod: 'RAZORPAY',
         items: {
           create: cart.items.map(item => ({
             productId: item.productId,
