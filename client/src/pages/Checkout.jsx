@@ -1,5 +1,4 @@
-import Razorpay from 'razorpay';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCartStore } from '../store/cartStore';
 import api from '../services/api';
@@ -13,15 +12,36 @@ export default function Checkout() {
   const { items, total: cartSubtotal, fetchCart } = useCartStore();
   const navigate = useNavigate();
 
-  // Changed default country to IN and default payment to ONLINE
   const [form, setForm] = useState({ firstName: '', lastName: '', phone: '', addressLine1: '', city: '', state: '', postalCode: '', country: 'IN' });
   const [paymentMethod, setPaymentMethod] = useState('ONLINE');
   const [couponCode, setCouponCode] = useState('');
   const [discount, setDiscount] = useState(0);
   const [couponMessage, setCouponMessage] = useState('');
   const [loading, setLoading] = useState(false);
+  const [scriptLoaded, setScriptLoaded] = useState(false);
 
-  // Updated to Indian GST (18%)
+  // Load Razorpay Browser Script dynamically
+  useEffect(() => {
+    const loadScript = () => {
+      return new Promise((resolve) => {
+        if (window.Razorpay) {
+          setScriptLoaded(true);
+          resolve(true);
+          return;
+        }
+        const script = document.createElement('script');
+        script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+        script.onload = () => {
+          setScriptLoaded(true);
+          resolve(true);
+        };
+        script.onerror = () => resolve(false);
+        document.body.appendChild(script);
+      });
+    };
+    loadScript();
+  }, []);
+
   const tax = cartSubtotal * 0.18;
   const shipping = cartSubtotal > 500 ? 0 : 40;
   const finalTotal = Math.max(0, cartSubtotal + tax + shipping - discount).toFixed(2);
@@ -41,7 +61,7 @@ export default function Checkout() {
     }
   };
 
-    const handleSubmit = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
@@ -92,11 +112,12 @@ export default function Checkout() {
           }
         };
         
-        const rzp = new Razorpay(options);
+        // Use window.Razorpay (from the script tag), NOT the npm package
+        const rzp = new window.Razorpay(options);
         rzp.open();
       }
     } catch (error) {
-      toast.error(error.message || 'Failed to initiate payment');
+      toast.error(error.response?.data?.message || error.message || 'Failed to initiate payment');
     } finally { setLoading(false); }
   };
 
@@ -176,8 +197,8 @@ export default function Checkout() {
           </div>
           <div className="mt-4 flex justify-between border-t border-border pt-4 font-display text-lg font-bold"><span>Total</span><span>₹{Math.round(finalTotal).toLocaleString('en-IN')}</span></div>
 
-          <button type="submit" form="checkout-form" disabled={loading} data-testid="place-order-btn" className="mt-8 w-full bg-foreground py-4 text-[12px] font-semibold uppercase tracking-luxe-sm text-white transition-colors hover:bg-gold disabled:opacity-50">
-            {loading ? 'Processing…' : (paymentMethod === 'COD' ? `Place Order · ₹${Math.round(finalTotal).toLocaleString('en-IN')}` : `Pay · ₹${Math.round(finalTotal).toLocaleString('en-IN')}`)}
+          <button type="submit" form="checkout-form" disabled={loading || (paymentMethod === 'ONLINE' && !scriptLoaded)} data-testid="place-order-btn" className="mt-8 w-full bg-foreground py-4 text-[12px] font-semibold uppercase tracking-luxe-sm text-white transition-colors hover:bg-gold disabled:opacity-50">
+            {loading ? 'Processing…' : (!scriptLoaded && paymentMethod === 'ONLINE' ? 'Loading Payment Gateway…' : (paymentMethod === 'COD' ? `Place Order · ₹${Math.round(finalTotal).toLocaleString('en-IN')}` : `Pay · ₹${Math.round(finalTotal).toLocaleString('en-IN')}`))}
           </button>
         </div>
       </div>
