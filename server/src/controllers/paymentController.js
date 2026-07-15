@@ -19,7 +19,7 @@ exports.createRazorpayOrder = async (req, res, next) => {
 
     // 2. Calculate Totals (Exactly like your order controller)
     const subtotal = cart.items.reduce((sum, item) => sum + (parseFloat(item.product.price) * item.quantity), 0);
-    const tax = parseFloat((subtotal * 0.18).toFixed(2);
+    const tax = parseFloat((subtotal * 0.18).toFixed(2));
     const shippingCost = subtotal > 500 ? 0 : 40;
     const total = parseFloat((subtotal + tax + shippingCost).toFixed(2));
 
