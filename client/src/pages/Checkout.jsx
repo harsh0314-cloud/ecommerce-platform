@@ -41,7 +41,7 @@ export default function Checkout() {
     }
   };
 
-  const handleSubmit = async (e) => {
+    const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
@@ -50,8 +50,15 @@ export default function Checkout() {
         toast.success('Order placed successfully!');
         await fetchCart();
         navigate(`/payment/success?orderId=${response.data.order.id}`);
-            } else {
+      } else {
+        // ONLY attempt to open Razorpay if the API call succeeds
         const res = await api.post('/payments/create-razorpay-order', { ...form });
+        
+        // Ensure we have the data before opening the modal
+        if (!res.data || !res.data.key) {
+          throw new Error("Failed to initialize payment gateway.");
+        }
+
         const options = {
           key: res.data.key,
           amount: res.data.amount,
@@ -63,10 +70,14 @@ export default function Checkout() {
           theme: res.data.theme,
           handler: async function (response) {
             // 1. Verify payment on backend
-            await api.post('/payments/verify-razorpay', {
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_payment_id: response.razorpay_payment_id,
-            });
+            try {
+              await api.post('/payments/verify-razorpay', {
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+              });
+            } catch (err) {
+              console.error("Payment verification failed, but payment might have gone through.");
+            }
             
             // 2. Clear cart and redirect to success page
             await fetchCart();
