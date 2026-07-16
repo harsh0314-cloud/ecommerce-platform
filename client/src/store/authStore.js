@@ -6,56 +6,53 @@ const useAuthStore = create(
   persist(
     (set) => ({
       user: null,
+      token: null, // ADD TOKEN TO STATE
       isAuthenticated: false,
       
       login: async (data) => {
         const response = await api.post('/auth/login', data);
-        
-        // BULLETPROOF CHECK: Look for the token in either the raw response OR the unwrapped response
-        const token = response?.data?.token || response?.token;
-        const user = response?.data?.user || response?.user;
+        // The Axios interceptor already unwraps response.data.data, so we just use response.data
+        const token = response?.token;
+        const user = response?.user;
 
         if (token && token !== 'undefined') {
-          localStorage.setItem('token', token);
-          set({ user, isAuthenticated: true });
+          set({ token, user, isAuthenticated: true }); // Zustand persist handles saving to localStorage automatically
         } else {
-          console.error("Token extraction failed. Response:", response);
           throw new Error("Failed to save authentication token.");
         }
       },
       
       register: async (data) => {
         const response = await api.post('/auth/register', data);
-        
-        const token = response?.data?.token || response?.token;
-        const user = response?.data?.user || response?.user;
+        const token = response?.token;
+        const user = response?.user;
 
         if (token && token !== 'undefined') {
-          localStorage.setItem('token', token);
-          set({ user, isAuthenticated: true });
+          set({ token, user, isAuthenticated: true });
         } else {
-          console.error("Token extraction failed. Response:", response);
           throw new Error("Failed to save authentication token.");
         }
       },
 
       logout: () => {
-        localStorage.removeItem('token');
-        set({ user: null, isAuthenticated: false });
+        set({ token: null, user: null, isAuthenticated: false }); // Clears everything cleanly
       },
 
       fetchUser: async () => {
         try {
           const response = await api.get('/auth/me');
-          const user = response?.data?.user || response?.user;
+          const user = response?.user;
           set({ user, isAuthenticated: true });
         } catch (error) {
-          localStorage.removeItem('token');
-          set({ user: null, isAuthenticated: false });
+          set({ token: null, user: null, isAuthenticated: false }); // Clear token too on failure
         }
       }
     }),
-    { name: 'auth-storage' }
+    { 
+      name: 'auth-storage',
+      // ONLY persist these specific fields to localStorage
+      partialize: (state) => ({ token: state.token, user: state.user, isAuthenticated: state.isAuthenticated }) 
+    }
   )
 );
 

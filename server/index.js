@@ -24,9 +24,31 @@ const prisma = new PrismaClient();
 
 app.set('trust proxy', 1);
 
-// 1. CORS MUST BE FIRST
+// ==========================================
+// 1. SECURE CORS CONFIGURATION
+// ==========================================
+const allowedOrigins = process.env.NODE_ENV === 'production' 
+  ? [
+      'https://storex-frontend-gold.vercel.app/', // <--- CHANGE THIS TO YOUR ACTUAL VITE/REACT DOMAIN
+      'https://www.your-production-frontend.com'
+    ] 
+  : [
+      'http://localhost:5173', // Default Vite port
+      'http://localhost:3000', // Common alternative port
+      'http://127.0.0.1:5173'
+    ];
+
 app.use(cors({
-  origin: true,
+  origin: function(origin, callback) {
+    // Allow requests with no origin (like mobile apps or server-to-server requests)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) === -1) {
+      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+      return callback(new Error(msg), false);
+    }
+    return callback(null, true);
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
@@ -38,10 +60,11 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false,
 }));
 
+// 3. Rate Limiting
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
-  message: { error: 'Too many requests from this IP' },
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per windowMs
+  message: { error: 'Too many requests from this IP, please try again later.' },
 });
 app.use('/api', limiter);
 
@@ -97,7 +120,7 @@ app.use(errorHandler);
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT} in ${process.env.NODE_ENV} mode`);
+  console.log(`Server running on port ${PORT} in ${process.env.NODE_ENV} mode`);
 });
 
 module.exports = app;
