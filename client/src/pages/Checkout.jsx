@@ -42,6 +42,8 @@ export default function Checkout() {
     loadScript();
   }, []);
 
+  // Note: Frontend calculation is for UI display only. 
+  // The backend enforces the exact mathematical total securely.
   const tax = cartSubtotal * 0.18;
   const shipping = cartSubtotal > 500 ? 0 : 40;
   const finalTotal = Math.max(0, cartSubtotal + tax + shipping - discount).toFixed(2);
@@ -89,20 +91,24 @@ export default function Checkout() {
           prefill: res.data.prefill,
           theme: res.data.theme,
           handler: async function (response) {
-            // 1. Verify payment on backend
+            // 1. Verify payment on backend WITH SIGNATURE AND ORDER ID
             try {
               await api.post('/payments/verify-razorpay', {
                 razorpay_order_id: response.razorpay_order_id,
                 razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature, // CRITICAL FIX
+                orderId: res.data.orderId                      // CRITICAL FIX
               });
+              
+              // 2. ONLY redirect if verification succeeds
+              await fetchCart();
+              toast.success('Payment successful!');
+              navigate(`/payment/success?orderId=${res.data.orderId}`);
             } catch (err) {
-              console.error("Payment verification failed, but payment might have gone through.");
+              // BLOCK redirect if verification fails
+              console.error("Payment verification failed.");
+              toast.error('Payment verification failed. Contact support if money was deducted.');
             }
-            
-            // 2. Clear cart and redirect to success page
-            await fetchCart();
-            toast.success('Payment successful!');
-            navigate(`/payment/success?orderId=${res.data.orderId}`);
           },
           modal: {
             ondismiss: function () {

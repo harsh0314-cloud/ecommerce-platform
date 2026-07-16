@@ -17,7 +17,7 @@ exports.createRazorpayOrder = async (req, res, next) => {
       return next(new AppError('Your cart is empty', 400));
     }
 
-    // 2. Calculate Totals (Exactly like your order controller)
+    // 2. Calculate Totals
     const subtotal = cart.items.reduce((sum, item) => sum + (parseFloat(item.product.price) * item.quantity), 0);
     const tax = parseFloat((subtotal * 0.18).toFixed(2));
     const shippingCost = subtotal > 500 ? 0 : 40;
@@ -63,13 +63,12 @@ exports.createRazorpayOrder = async (req, res, next) => {
       amount: Math.round(total * 100), // Converts ₹ to paise
       currency: "INR",
       receipt: order.orderNumber,
-      notes: { name: `${firstName} ${lastName}`, email: req.user.email },
+      notes: { orderId: order.id }, // Pass DB order ID in notes for easy lookup
     });
 
-    // 6. Clear the user's cart
-    await req.prisma.cartItem.deleteMany({ where: { cartId: cart.id } });
+    // NOTICE: We DO NOT clear the cart here. We wait for verification.
 
-    // 7. Send details to frontend
+    // 6. Send details to frontend
     res.status(200).json({
       status: 'success',
       data: {
@@ -79,7 +78,7 @@ exports.createRazorpayOrder = async (req, res, next) => {
         name: "StoreX Purchase",
         description: `Order ${order.orderNumber}`,
         order_id: razorpayOrder.id,
-        orderId: order.id,
+        orderId: order.id, // Send DB order ID to frontend
         prefill: {
           name: `${firstName} ${lastName}`,
           contact: phone,
@@ -92,25 +91,63 @@ exports.createRazorpayOrder = async (req, res, next) => {
   }
 };
 
-// 2. Webhook to verify payment
+// 2. Verify Payment (Called by Frontend after checkout)
 exports.verifyRazorpayPayment = async (req, res, next) => {
   try {
-    const { razorpay_order_id, razorpay_payment_id } = req.body;
-    const secret = process.env.RAZORPAY_KEY_SECRET;
+    // 1. Get data from FRONTEND BODY (not headers)
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, orderId } = req.body;
 
-    const body = razorpay_order_id + "|" + req.headers['x-razorpay-signature'];
-    const expectedSignature = crypto.createHmac('sha256', secret).update(body).digest('hex');
+    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature || !orderId) {
+      return next(new AppError('Missing payment verification details', 400));
+    }
 
-    if (expectedSignature === req.headers['x-razorpay-signature']) {
-      const order = await req.prisma.order.findFirst({ where: { orderNumber: razorpay_order_id.replace('pay_', '') } });
-      if (order) {
-        await req.prisma.order.update({ where: { id: order.id }, data: { status: 'CONFIRMED' } });
-      }
-      res.status(200).json({ status: 'success', message: 'Payment verified' });
-    } else {
+    // 2. Create the expected signature correctly
+    const body = razorpay_order_id + "|" + razorpay_payment_id;
+    const expectedSignature = crypto.createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+      .update(body)
+      .digest('hex');
+
+    // 3. Compare signatures securely
+    if (expectedSignature !== razorpay_signature) {
       return next(new AppError('Invalid payment signature', 400));
     }
+
+    // 4. Find the order using the DB ID passed from frontend
+    const order = await req.prisma.order.findUnique({ where: { id: orderId } });
+    if (!order) {
+      return next(new AppError('Order not found', 404));
+    }
+
+    // 5. Use a Transaction to ensure all DB updates happen together safely
+    await req.prisma.$transaction(async (tx) => {
+      // Update Order Status
+      await tx.order.update({
+        where: { id: order.id },
+        data: { status: 'CONFIRMED' }
+      });
+
+      // Create Payment Record (CRITICAL: Was missing entirely!)
+      await tx.payment.create({
+        data: {
+          orderId: order.id,
+          method: 'RAZORPAY',
+          status: 'COMPLETED',
+          amount: order.total,
+          currency: 'inr',
+          transactionId: razorpay_payment_id,
+          stripePaymentIntentId: razorpay_order_id, // Re-using this column for razorpay_order_id to avoid schema change
+        }
+      });
+
+      // CLEAR CART ONLY AFTER PAYMENT IS VERIFIED
+      const cart = await tx.cart.findUnique({ where: { userId: req.user.id } });
+      if (cart) {
+        await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
+      }
+    });
+
+    res.status(200).json({ status: 'success', message: 'Payment verified successfully' });
   } catch (error) {
     next(error);
   }
-};
+}; 
