@@ -43,11 +43,23 @@ export default function Dashboard() {
     }
   };
 
+  // Helper function to format currency to INR
+  const formatCurrency = (amount) => `₹${parseFloat(amount || 0).toFixed(2)}`;
+
   const statCards = [
-    { title: 'Total Revenue', value: `$${parseFloat(stats.totalRevenue || 0).toFixed(2)}`, icon: DollarSign, color: 'bg-green-100 text-green-700', tabKey: 'revenue' },
+    { title: 'Total Revenue', value: formatCurrency(stats.totalRevenue), icon: DollarSign, color: 'bg-green-100 text-green-700', tabKey: 'revenue' },
     { title: 'Total Orders', value: stats.totalOrders, icon: ShoppingBag, color: 'bg-blue-100 text-blue-700', tabKey: 'orders' },
     { title: 'Customers', value: stats.users, icon: Users, color: 'bg-purple-100 text-purple-700', tabKey: 'customers' },
   ];
+
+  // Helper to display correct payment method text
+  const getPaymentMethodText = (payment) => {
+    if (!payment || payment.status !== 'COMPLETED') return 'Cash on Delivery';
+    
+    if (payment.method === 'RAZORPAY') return 'Paid via Razorpay';
+    if (payment.method === 'STRIPE') return 'Paid via Stripe';
+    return 'Paid Online';
+  };
 
   return (
     <div className="space-y-8">
@@ -124,7 +136,7 @@ export default function Dashboard() {
                                   {order.status}
                                 </span>
                               </td>
-                              <td className="py-4 text-right font-bold text-gray-900 dark:text-white">${parseFloat(order.total).toFixed(2)}</td>
+                              <td className="py-4 text-right font-bold text-gray-900 dark:text-white">{formatCurrency(order.total)}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -162,8 +174,8 @@ export default function Dashboard() {
                               </div>
                             </div>
                             <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
-                              <span className={`text-xs font-bold uppercase ${order.payments?.length > 0 ? 'text-green-600' : 'text-blue-600'}`}>
-                               💳 {order.payment?.status === 'COMPLETED' ? 'Paid via Stripe' : 'Cash on Delivery'}
+                              <span className={`text-xs font-bold uppercase ${order.payment?.status === 'COMPLETED' ? 'text-green-600' : 'text-blue-600'}`}>
+                               💳 {getPaymentMethodText(order.payment)}
                               </span>
                             </div>
                           </div>
@@ -175,9 +187,9 @@ export default function Dashboard() {
                                 <img src={item.image || 'https://via.placeholder.com/80'} alt={item.name} className="w-12 h-12 rounded-md object-cover" />
                                 <div className="flex-1">
                                   <p className="text-sm font-semibold text-gray-900 dark:text-white">{item.name}</p>
-                                  <p className="text-xs text-gray-500">Qty: {item.quantity} • ${parseFloat(item.price).toFixed(2)} each</p>
+                                  <p className="text-xs text-gray-500">Qty: {item.quantity} • {formatCurrency(item.price)} each</p>
                                 </div>
-                                <p className="font-bold text-gray-900 dark:text-white">${parseFloat(item.subtotal).toFixed(2)}</p>
+                                <p className="font-bold text-gray-900 dark:text-white">{formatCurrency(item.subtotal)}</p>
                               </div>
                             ))}
                           </div>
