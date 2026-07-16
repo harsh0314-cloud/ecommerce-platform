@@ -3,10 +3,8 @@ const router = express.Router();
 const paymentController = require('../controllers/paymentController');
 const { authenticate } = require('../middleware/auth');
 
-// Normal routes use standard JSON parsing
+// Both routes are called by the frontend browser, so they need JSON parsing and Authentication
 router.post('/create-razorpay-order', authenticate, paymentController.createRazorpayOrder);
-
-// WEBHOOK ROUTE MUST USE RAW BODY PARSER
-router.post('/verify-razorpay', express.raw({ type: 'application/json' }), paymentController.verifyRazorpayPayment);
+router.post('/verify-razorpay', authenticate, paymentController.verifyRazorpayPayment);
 
 module.exports = router;
