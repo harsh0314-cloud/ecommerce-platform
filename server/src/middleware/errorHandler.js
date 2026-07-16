@@ -28,11 +28,16 @@ const errorHandler = (err, req, res, next) => {
     err.message = 'An unexpected error occurred.';
   }
 
+  if (err instanceof Prisma.PrismaClientValidationError) {
+  err = new AppError('Invalid data provided.', 400);
+  }
+
   res.status(err.statusCode).json({
     status: err.status,
     message: err.message,
     ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
   });
 };
+
 
 module.exports = errorHandler;

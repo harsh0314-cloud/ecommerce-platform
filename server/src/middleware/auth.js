@@ -1,7 +1,8 @@
 const jwt = require('jsonwebtoken');
 const { AppError } = require('../utils/AppError');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_jwt_key_change_in_production_123';
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) throw new Error("FATAL ERROR: JWT_SECRET is not defined in environment variables.");
 
 const generateToken = (userId, role) => {
   return jwt.sign({ userId, role }, JWT_SECRET, { expiresIn: '7d' });
@@ -31,4 +32,4 @@ const authenticate = async (req, res, next) => {
   }
 };
 
-module.exports = { generateToken, authenticate, JWT_SECRET };
+module.exports = { generateToken, authenticate, JWT_SECRET }; 

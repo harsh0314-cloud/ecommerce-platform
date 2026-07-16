@@ -31,7 +31,7 @@ enum PaymentStatus {
 }
 
 enum PaymentMethod {
-  STRIPE
+  RAZORPAY
   CASH_ON_DELIVERY
 }
 
@@ -354,7 +354,7 @@ model Payment {
   method         PaymentMethod
   status         PaymentStatus @default(PENDING)
   amount         Decimal       @db.Decimal(10, 2)
-  currency       String        @default("usd")
+  currency       String        @default("inr")
   transactionId  String?       @unique
   stripePaymentIntentId String? @unique
   receiptUrl     String?
