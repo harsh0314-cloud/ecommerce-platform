@@ -25,22 +25,18 @@ const prisma = new PrismaClient();
 app.set('trust proxy', 1);
 
 // ==========================================
-// 1. SECURE CORS CONFIGURATION
+// 1. BULLETPROOF CORS CONFIGURATION
 // ==========================================
-const allowedOrigins = process.env.NODE_ENV === 'production' 
-  ? [
-      'https://storex-frontend-gold.vercel.app/', // <--- CHANGE THIS TO YOUR ACTUAL VITE/REACT DOMAIN
-      'https://www.your-production-frontend.com'
-    ] 
-  : [
-      'http://localhost:5173', // Default Vite port
-      'http://localhost:3000', // Common alternative port
-      'http://127.0.0.1:5173'
-    ];
+const allowedOrigins = [
+  'https://storex-frontend-gold.vercel.app', // YOUR LIVE VERCEL URL
+  'http://localhost:5173', 
+  'http://localhost:3000', 
+  'http://127.0.0.1:5173'
+];
 
 app.use(cors({
   origin: function(origin, callback) {
-    // Allow requests with no origin (like mobile apps or server-to-server requests)
+    // Allow requests with no origin (like mobile apps, Postman, or server wake-ups)
     if (!origin) return callback(null, true);
     
     if (allowedOrigins.indexOf(origin) === -1) {
