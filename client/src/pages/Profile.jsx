@@ -291,12 +291,12 @@ export default function Profile() {
       setLoading(true);
       try {
         // Fetch both in parallel. If one fails, the other still succeeds.
-        const [ordersRes, wishlistRes] = await Promise.all([
-          api.get('/orders').catch(err => {
+                const [ordersRes, wishlistRes] = await Promise.all([
+          api.get('/orders/myorders').catch(err => {
             console.error("Orders API Error:", err.message);
             return { data: null };
           }),
-          api.get('/user/wishlist').catch(err => {
+          api.get('/wishlist').catch(err => {
             console.error("Wishlist API Error:", err.message);
             return { data: null };
           }),
