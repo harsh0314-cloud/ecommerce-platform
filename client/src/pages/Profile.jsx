@@ -15,7 +15,6 @@ import {
   EmptyState, SkeletonCard, StatCard, SectionTitle, ComingSoonCard 
 } from '../components/profile/ProfileUI';
 
-// --- PRESERVED EXACT LOGIC ---
 const passwordSchema = z.object({
   currentPassword: z.string().min(1, 'Required'),
   newPassword: z.string().min(8, 'Min 8 characters'),
@@ -37,7 +36,7 @@ const sidebarLinks = [
   { id: 'settings', label: 'Settings', icon: Settings },
 ];
 
-// --- EXTRACTED COMPONENTS (Fixes all red lines) ---
+// --- EXTRACTED COMPONENTS (Clean Linter) ---
 
 const Sidebar = ({ activeTab, setActiveTab, isMobileMenuOpen, setIsMobileMenuOpen, onLogout }) => (
   <div className={`lg:block fixed inset-y-0 left-0 z-40 w-72 bg-white dark:bg-gray-900 border-r border-border transform transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
@@ -90,7 +89,7 @@ const ProfileHeader = ({ user, setActiveTab }) => (
         <p className="text-sm text-muted-foreground mt-1">{user?.email}</p>
         <div className="flex items-center gap-4 mt-3 justify-center sm:justify-start">
           <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 px-3 py-1 rounded-full border border-border">
-            Member since {user?.createdAt ? new Date(user.createdAt).getFullYear() : '2026'}
+            Member since {user?.createdAt ? new Date(user.createdAt).getFullYear() : '2024'}
           </span>
           <span className="text-xs font-semibold text-amber-700 bg-amber-50 dark:bg-amber-900/30 px-3 py-1 rounded-full border border-amber-200 dark:border-amber-800">
             {user?.role || 'GOLD'} TIER
@@ -215,10 +214,7 @@ const WishlistTab = ({ wishlist, loading }) => (
 
 const SettingsTab = ({ user }) => {
   const [settingsView, setSettingsView] = useState('info');
-
-  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm({
-    resolver: zodResolver(passwordSchema),
-  });
+  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm({ resolver: zodResolver(passwordSchema) });
 
   const onPasswordSubmit = async (data) => {
     try {
@@ -237,7 +233,6 @@ const SettingsTab = ({ user }) => {
         <button onClick={() => setSettingsView('info')} className={`pb-3 text-sm font-medium border-b-2 transition-colors ${settingsView === 'info' ? 'border-foreground text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>Profile Information</button>
         <button onClick={() => setSettingsView('password')} className={`pb-3 text-sm font-medium border-b-2 transition-colors ${settingsView === 'password' ? 'border-foreground text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>Change Password</button>
       </div>
-
       {settingsView === 'info' && (
         <div className="bg-white dark:bg-gray-800 border border-border rounded-2xl p-8">
           <div className="flex items-center gap-6 mb-8">
@@ -255,7 +250,6 @@ const SettingsTab = ({ user }) => {
           </div>
         </div>
       )}
-
       {settingsView === 'password' && (
         <form onSubmit={handleSubmit(onPasswordSubmit)} className="bg-white dark:bg-gray-800 border border-border rounded-2xl p-8 space-y-6">
           <div className="flex items-center gap-3 mb-2">
@@ -291,22 +285,31 @@ export default function Profile() {
   const [wishlist, setWishlist] = useState([]);
   const [loading, setLoading] = useState(false);
 
+  // INDESTRUCTIBLE DATA FETCHING
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        // Fetch data for Dashboard, Orders, and Wishlist simultaneously
-        if (['dashboard', 'orders', 'wishlist'].includes(activeTab)) {
-          const [ordersRes, wishlistRes] = await Promise.all([
-            api.get('/orders/myorders'),
-            api.get('/wishlist')
-          ]);
-          
+        // Fetch both in parallel. If one fails, the other still succeeds.
+        const [ordersRes, wishlistRes] = await Promise.all([
+          api.get('/orders/myorders').catch(err => {
+            console.error("Orders API Error:", err.message);
+            return { data: null };
+          }),
+          api.get('/wishlist').catch(err => {
+            console.error("Wishlist API Error:", err.message);
+            return { data: null };
+          }),
+        ]);
+
+        if (ordersRes?.data) {
           setOrders(ordersRes.data?.orders || ordersRes.data || []);
+        }
+        if (wishlistRes?.data) {
           setWishlist(wishlistRes.data?.items || wishlistRes.data || []);
         }
       } catch (error) {
-        console.error(`Failed to fetch profile data:`, error);
+        console.error("Critical Data Fetch Error:", error);
       } finally {
         setLoading(false);
       }
@@ -321,6 +324,7 @@ export default function Profile() {
 
   return (
     <div className="min-h-screen bg-gray-50/50 dark:bg-gray-950">
+      {/* Mobile Top Nav Toggle */}
       <div className="lg:hidden fixed top-0 left-0 right-0 z-30 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-border p-4 flex items-center justify-between">
         <h1 className="font-display text-lg font-bold">{activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}</h1>
         <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
@@ -328,6 +332,7 @@ export default function Profile() {
         </button>
       </div>
 
+      {/* Overlay for mobile sidebar */}
       {isMobileMenuOpen && <div onClick={() => setIsMobileMenuOpen(false)} className="lg:hidden fixed inset-0 bg-black/50 z-30" />}
 
       <div className="container-luxe pt-24 lg:pt-14 pb-14">
