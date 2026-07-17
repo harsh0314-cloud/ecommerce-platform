@@ -15,6 +15,7 @@ import {
   EmptyState, SkeletonCard, StatCard, SectionTitle, ComingSoonCard 
 } from '../components/profile/ProfileUI';
 
+// --- PRESERVED PASSWORD LOGIC ---
 const passwordSchema = z.object({
   currentPassword: z.string().min(1, 'Required'),
   newPassword: z.string().min(8, 'Min 8 characters'),
@@ -36,8 +37,31 @@ const sidebarLinks = [
   { id: 'settings', label: 'Settings', icon: Settings },
 ];
 
-// --- EXTRACTED COMPONENTS (Clean Linter) ---
+// --- HELPER: Extract array from ANY response format ---
+function extractArray(response) {
+  if (!response || !response.data) return [];
+  
+  const data = response.data;
+  
+  // Case 1: data IS the array directly: [...]
+  if (Array.isArray(data)) return data;
+  
+  // Case 2: data.orders = [...]
+  if (data.orders && Array.isArray(data.orders)) return data.orders;
+  
+  // Case 3: data.items = [...]
+  if (data.items && Array.isArray(data.items)) return data.items;
+  
+  // Case 4: data.data = [...] (double-wrapped)
+  if (data.data && Array.isArray(data.data)) return data.data;
+  
+  // Case 5: data.data.orders = [...]
+  if (data.data?.orders && Array.isArray(data.data.orders)) return data.data.orders;
+  
+  return [];
+}
 
+// --- SIDEBAR COMPONENT ---
 const Sidebar = ({ activeTab, setActiveTab, isMobileMenuOpen, setIsMobileMenuOpen, onLogout }) => (
   <div className={`lg:block fixed inset-y-0 left-0 z-40 w-72 bg-white dark:bg-gray-900 border-r border-border transform transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
     <div className="p-8 border-b border-border">
@@ -72,6 +96,7 @@ const Sidebar = ({ activeTab, setActiveTab, isMobileMenuOpen, setIsMobileMenuOpe
   </div>
 );
 
+// --- PROFILE HEADER ---
 const ProfileHeader = ({ user, setActiveTab }) => (
   <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-gray-100 via-white to-gray-100 dark:from-gray-800 dark:via-gray-900 dark:to-gray-800 border border-border p-8 mb-8">
     <div className="relative z-10 flex flex-col sm:flex-row items-center gap-6">
@@ -107,21 +132,31 @@ const ProfileHeader = ({ user, setActiveTab }) => (
   </div>
 );
 
-const DashboardTab = ({ orders, wishlist, loading }) => (
+// --- DASHBOARD TAB (Stat cards now clickable!) ---
+const DashboardTab = ({ orders, wishlist, loading, setActiveTab, navigate }) => (
   <div>
     <SectionTitle>Account Overview</SectionTitle>
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-12">
-      <StatCard title="Total Orders" value={orders.length || 0} icon={Package} color="bg-blue-100 text-blue-600" />
-      <StatCard title="Wishlist Items" value={wishlist.length || 0} icon={Heart} color="bg-red-100 text-red-600" />
-      <StatCard title="Coupons" value="0" icon={Tag} color="bg-green-100 text-green-600" />
-      <StatCard title="Reward Points" value="1,250" icon={Trophy} color="bg-purple-100 text-purple-600" />
+      <div onClick={() => setActiveTab('orders')} className="cursor-pointer hover:scale-105 transition-transform">
+        <StatCard title="Total Orders" value={orders.length || 0} icon={Package} color="bg-blue-100 text-blue-600" />
+      </div>
+      <div onClick={() => setActiveTab('wishlist')} className="cursor-pointer hover:scale-105 transition-transform">
+        <StatCard title="Wishlist Items" value={wishlist.length || 0} icon={Heart} color="bg-red-100 text-red-600" />
+      </div>
+      <div onClick={() => setActiveTab('coupons')} className="cursor-pointer hover:scale-105 transition-transform">
+        <StatCard title="Coupons" value="0" icon={Tag} color="bg-green-100 text-green-600" />
+      </div>
+      <div onClick={() => setActiveTab('rewards')} className="cursor-pointer hover:scale-105 transition-transform">
+        <StatCard title="Reward Points" value="1,250" icon={Trophy} color="bg-purple-100 text-purple-600" />
+      </div>
     </div>
+    
     <SectionTitle>Recent Orders</SectionTitle>
     {loading ? (
       <div className="space-y-4"><SkeletonCard /><SkeletonCard /></div>
     ) : orders.length > 0 ? (
       <div className="space-y-4">
-        {orders.slice(0, 2).map(order => (
+        {orders.slice(0, 3).map(order => (
           <div key={order.id} className="flex items-center justify-between p-5 border border-border rounded-xl hover:shadow-md transition-shadow bg-white dark:bg-gray-800">
             <div className="flex items-center gap-4">
               <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden flex-shrink-0">
@@ -140,19 +175,26 @@ const DashboardTab = ({ orders, wishlist, loading }) => (
             </div>
           </div>
         ))}
+        <button 
+          onClick={() => setActiveTab('orders')}
+          className="w-full text-center text-sm font-semibold text-gray-500 hover:text-foreground py-3 border border-border rounded-xl transition-colors hover:bg-surface"
+        >
+          View All Orders →
+        </button>
       </div>
     ) : (
       <EmptyState 
         icon={Package} 
         title="No orders yet" 
         description="Looks like you haven't placed any orders. Start shopping to see them here." 
+        action="Shop Now"
         actionLink="/products"
-        action="Shop Now" 
       />
     )}
   </div>
 );
 
+// --- ORDERS TAB ---
 const OrdersTab = ({ orders, loading }) => (
   <div>
     <SectionTitle>Order History</SectionTitle>
@@ -175,7 +217,7 @@ const OrdersTab = ({ orders, loading }) => (
             <div className="space-y-3">
               {order.items?.map(item => (
                 <div key={item.id} className="flex items-center gap-4">
-                  <img src={item.image} className="w-14 h-14 rounded-md object-cover border border-gray-100 dark:border-gray-700" alt={item.name} />
+                  <img src={item.image || 'https://via.placeholder.com/56'} className="w-14 h-14 rounded-md object-cover border border-gray-100 dark:border-gray-700" alt={item.name} />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{item.name}</p>
                     <p className="text-xs text-muted-foreground">Qty: {item.quantity} • ₹{parseFloat(item.price).toFixed(2)}</p>
@@ -187,26 +229,33 @@ const OrdersTab = ({ orders, loading }) => (
         ))}
       </div>
     ) : (
-      <EmptyState icon={Package} title="No orders found" description="You haven't placed any orders yet." actionLink="/products" action="Start Shopping" />
+      <EmptyState 
+        icon={Package} 
+        title="No orders found" 
+        description="You haven't placed any orders yet." 
+        action="Start Shopping"
+        actionLink="/products"
+      />
     )}
   </div>
 );
 
+// --- WISHLIST TAB ---
 const WishlistTab = ({ wishlist, loading }) => (
   <div>
     <SectionTitle>My Wishlist ({wishlist.length})</SectionTitle>
     {loading ? (
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-6"><SkeletonCard /><SkeletonCard /><SkeletonCard /><SkeletonCard /><SkeletonCard /></div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-6"><SkeletonCard /><SkeletonCard /><SkeletonCard /><SkeletonCard /></div>
     ) : wishlist.length > 0 ? (
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
         {wishlist.map(item => (
           <motion.div key={item.id} whileHover={{ y: -5 }} className="group border border-border rounded-xl overflow-hidden bg-white dark:bg-gray-800 hover:shadow-lg transition-all duration-300">
             <div className="relative aspect-square overflow-hidden bg-gray-100 dark:bg-gray-700">
-              <img src={item.product?.image || item.image} alt={item.product?.name || item.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+              <img src={item.product?.image || item.image || 'https://via.placeholder.com/200'} alt={item.product?.name || item.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
             </div>
             <div className="p-4">
               <h3 className="text-sm font-medium text-gray-900 dark:text-white truncate">{item.product?.name || item.name}</h3>
-              <p className="text-lg font-display font-bold mt-2">₹{parseFloat(item.product?.price || item.price).toFixed(2)}</p>
+              <p className="text-lg font-display font-bold mt-2">₹{parseFloat(item.product?.price || item.price || 0).toFixed(2)}</p>
               <button className="w-full mt-3 border border-foreground py-2 text-[11px] font-semibold uppercase tracking-luxe-sm hover:bg-foreground hover:text-white transition-colors">Move to Cart</button>
             </div>
           </motion.div>
@@ -217,13 +266,14 @@ const WishlistTab = ({ wishlist, loading }) => (
         icon={Heart} 
         title="Your wishlist is empty" 
         description="Save items you love for later." 
+        action="Explore Products"
         actionLink="/products"
-        action="Explore Products" 
       />
     )}
   </div>
 );
 
+// --- SETTINGS TAB ---
 const SettingsTab = ({ user }) => {
   const [settingsView, setSettingsView] = useState('info');
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm({ resolver: zodResolver(passwordSchema) });
@@ -287,7 +337,7 @@ const SettingsTab = ({ user }) => {
   );
 };
 
-// --- MAIN PROFILE COMPONENT (Clean & Red-Line Free) ---
+// --- MAIN PROFILE COMPONENT ---
 export default function Profile() {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
@@ -297,50 +347,65 @@ export default function Profile() {
   const [wishlist, setWishlist] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // INDEPENDENT FETCHING (One failing won't break the other)
+  // ✅ BULLETPROOF DATA FETCHING - Tries multiple endpoints
   useEffect(() => {
     const fetchData = async () => {
+      // Only fetch on these tabs
+      if (!['dashboard', 'orders', 'wishlist'].includes(activeTab)) return;
+      
       setLoading(true);
+      
+      // =====================================================
+      // FETCH ORDERS — Try /orders/myorders first, then /orders
+      // =====================================================
+      let ordersRes = null;
       try {
-        // Let the "let" variables exist outside the catch blocks so they are accessible later
-        let ordersRes;
-        let wishlistRes;
-
+        ordersRes = await api.get('/orders/myorders');
+        console.log('✅ Orders from /orders/myorders:', ordersRes);
+      } catch (err1) {
+        console.warn('⚠️ /orders/myorders failed:', err1.message);
+        // Fallback: try /orders (maybe your backend uses this route)
         try {
-          ordersRes = await api.get('/orders/myorders');
-        } catch (err) {
-          console.warn('Orders fetch failed:', err.message);
-          ordersRes = { data: null }; // Assign null so parsing doesn't crash
+          ordersRes = await api.get('/orders');
+          console.log('✅ Orders from /orders:', ordersRes);
+        } catch (err2) {
+          console.error('❌ Both order endpoints failed:', err2.message);
         }
-
-        try {
-          wishlistRes = await api.get('/wishlist');
-        } catch (err) {
-          console.warn('Wishlist endpoint not found (404 is normal if route doesn,t exist yet)');
-          wishlistRes = { data: null }; // Assign null so parsing doesn't crash
-        }
-
-        // INDESTRUCTURE THE UNWRAPPED DATA SAFELY
-        let parsedOrders = [];
-        let parsedWishlist = [];
-
-        // Check if it's a direct array (e.g., just `[...]`)
-        if (Array.isArray(ordersRes?.data)) {
-          parsedOrders = ordersRes.data;
-        } 
-        // Fallback: If not an array, maybe the backend returned { orders: [...] } instead of just [...]
-        else if (ordersRes?.data?.orders && Array.isArray(ordersRes.data.orders)) {
-          parsedOrders = ordersRes.data.orders;
-        }
-
-        if (parsedWishlist?.length > 0) setWishlist(parsedWishlist);
-        if (parsedOrders?.length > 0) setOrders(parsedOrders);
-      } catch (error) {
-        console.error("Critical Data Fetch Error:", error);
-      } finally {
-        setLoading(false);
       }
+      
+      // Parse orders from ANY response format
+      if (ordersRes) {
+        const parsedOrders = extractArray(ordersRes);
+        console.log('📋 Parsed Orders count:', parsedOrders.length);
+        setOrders(parsedOrders);
+      }
+      
+      // =====================================================
+      // FETCH WISHLIST — Try /wishlist, then /user/wishlist
+      // =====================================================
+      let wishlistRes = null;
+      try {
+        wishlistRes = await api.get('/wishlist');
+        console.log('✅ Wishlist from /wishlist:', wishlistRes);
+      } catch (err1) {
+        console.warn('⚠️ /wishlist failed:', err1.message);
+        try {
+          wishlistRes = await api.get('/user/wishlist');
+          console.log('✅ Wishlist from /user/wishlist:', wishlistRes);
+        } catch (err2) {
+          console.warn('⚠️ Wishlist endpoint not found (this is OK if you have no wishlist API)');
+        }
+      }
+      
+      if (wishlistRes) {
+        const parsedWishlist = extractArray(wishlistRes);
+        console.log('❤️ Parsed Wishlist count:', parsedWishlist.length);
+        setWishlist(parsedWishlist);
+      }
+      
+      setLoading(false);
     };
+    
     fetchData();
   }, [activeTab]);
 
@@ -351,7 +416,7 @@ export default function Profile() {
 
   return (
     <div className="min-h-screen bg-gray-50/50 dark:bg-gray-950">
-      {/* Mobile Top Nav Toggle */}
+      {/* Mobile Top Nav */}
       <div className="lg:hidden fixed top-0 left-0 right-0 z-30 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-border p-4 flex items-center justify-between">
         <h1 className="font-display text-lg font-bold">{activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}</h1>
         <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
@@ -359,7 +424,6 @@ export default function Profile() {
         </button>
       </div>
 
-      {/* Overlay for mobile sidebar */}
       {isMobileMenuOpen && <div onClick={() => setIsMobileMenuOpen(false)} className="lg:hidden fixed inset-0 bg-black/50 z-30" />}
 
       <div className="container-luxe pt-24 lg:pt-14 pb-14">
@@ -384,12 +448,20 @@ export default function Profile() {
                 {activeTab === 'dashboard' && <ProfileHeader user={user} setActiveTab={setActiveTab} />}
                 
                 <div className="mt-8">
-                  {activeTab === 'dashboard' && <DashboardTab orders={orders} wishlist={wishlist} loading={loading} />}
+                  {activeTab === 'dashboard' && (
+                    <DashboardTab 
+                      orders={orders} 
+                      wishlist={wishlist} 
+                      loading={loading} 
+                      setActiveTab={setActiveTab}
+                      navigate={navigate}
+                    />
+                  )}
                   {activeTab === 'orders' && <OrdersTab orders={orders} loading={loading} />}
                   {activeTab === 'wishlist' && <WishlistTab wishlist={wishlist} loading={loading} />}
                   {activeTab === 'settings' && <SettingsTab user={user} />}
                   
-                  {activeTab === 'addresses' && <EmptyState icon={MapPin} title="No saved addresses" description="Add your shipping addresses for a faster checkout experience." actionLink="/products" action="Add Address" />}
+                  {activeTab === 'addresses' && <EmptyState icon={MapPin} title="No saved addresses" description="Add your shipping addresses for a faster checkout experience." action="Add Address" actionLink="/checkout" />}
                   {activeTab === 'coupons' && <EmptyState icon={Tag} title="No coupons available" description="You don't have any coupons right now. Check back later for exclusive offers!" />}
                   {activeTab === 'rewards' && <ComingSoonCard title="Loyalty Rewards" description="Earn points on every purchase and redeem them for exclusive discounts." icon={Trophy} />}
                   {activeTab === 'reviews' && <EmptyState icon={Star} title="No reviews yet" description="Share your thoughts on products you've purchased to help other customers." />}
