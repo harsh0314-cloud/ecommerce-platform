@@ -73,11 +73,6 @@ app.post('/api/payments/webhook',
   paymentController.handleWebhook
 );
 
-// Parsers (Move these DOWN below the webhook)
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-
-
 // Parsers
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
