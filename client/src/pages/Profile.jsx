@@ -156,8 +156,12 @@ const DashboardTab = ({ orders, wishlist, loading, setActiveTab, navigate }) => 
       <div className="space-y-4"><SkeletonCard /><SkeletonCard /></div>
     ) : orders.length > 0 ? (
       <div className="space-y-4">
-        {orders.slice(0, 3).map(order => (
-          <div key={order.id} className="flex items-center justify-between p-5 border border-border rounded-xl hover:shadow-md transition-shadow bg-white dark:bg-gray-800">
+          {orders.slice(0, 3).map(order => (
+          <div 
+            key={order.id} 
+            onClick={() => navigate(`/orders/${order.id}`)}
+            className="flex items-center justify-between p-5 border border-border rounded-xl hover:shadow-md transition-shadow bg-white dark:bg-gray-800 cursor-pointer"
+          >
             <div className="flex items-center gap-4">
               <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden flex-shrink-0">
                 {order.items?.[0]?.image ? <img src={order.items[0].image} alt="" className="w-full h-full object-cover" /> : <Package size={20} className="m-auto text-gray-400" />}
@@ -203,7 +207,13 @@ const OrdersTab = ({ orders, loading }) => (
     ) : orders.length > 0 ? (
       <div className="space-y-4">
         {orders.map(order => (
-          <motion.div key={order.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-6 border border-border rounded-xl bg-white dark:bg-gray-800 hover:shadow-md transition-shadow">
+          <motion.div 
+            key={order.id} 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            onClick={() => navigate(`/orders/${order.id}`)}
+            className="p-6 border border-border rounded-xl bg-white dark:bg-gray-800 hover:shadow-md transition-shadow cursor-pointer"
+          >
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4 pb-4 border-b border-gray-100 dark:border-gray-700">
               <div>
                 <h3 className="font-display font-bold text-gray-900 dark:text-white">{order.orderNumber}</h3>
