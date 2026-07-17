@@ -302,27 +302,22 @@ export default function Profile() {
           return { data: null };
         });
 
-        // INDESTRUCTURE THE UNWRAPPED DATA SAFELY
-        let parsedOrders = [];
-        let parsedWishlist = [];
+      // INDESTRUCTURE THE UNWRAPPED DATA SAFELy
+      let parsedOrders = [];
+      let parsedWishlist = [];
 
-        // Check if the unwrapped response.data is the array directly (Happens because of your Axios interceptor: response.data = response.data.data)
-        if (Array.isArray(ordersRes?.data)) {
-          parsedOrders = ordersRes.data;
-        } 
-        // Fallback: If not an array, maybe the backend returned { orders: [...] } instead of just [...]
-        else if (Array.isArray(ordersRes?.data?.orders)) {
-          parsedOrders = ordersRes.data.orders;
-        }
+      // 1. Check if it's a direct array (e.g., just `[...]`)
+      if (Array.isArray(ordersRes?.data)) {
+        parsedOrders = ordersRes.data;
+      } 
+      // 2. Check if it's wrapped in an object key like { orders: [...] }
+      else if (ordersRes?.data?.orders && Array.isArray(ordersRes.data.orders)) {
+        parsedOrders = ordersRes.data.orders;
+      }
 
-        if (Array.isArray(wishlistRes?.data)) {
-          parsedWishlist = wishlistRes.data;
-        } else if (Array.isArray(wishlistRes?.data?.items)) {
-          parsedWishlist = wishlistRes.data.items;
-        }
-
-        if (parsedOrders.length > 0) setOrders(parsedOrders);
-        if (parsedWishlist.length > 0) setWishlist(parsedWishlist);
+      // 3. Fallback: Check if it's wrapped in an items key { items: [...] }
+      if (parsedWishlist?.length > 0) setWishlist(parsedWishlist);
+      if (parsedOrders?.length > 0) setOrders(parsedOrders);
       } catch (error) {
         console.error("Critical Data Fetch Error:", error);
       } finally {

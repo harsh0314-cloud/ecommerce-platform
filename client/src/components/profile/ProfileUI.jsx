@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 import { Package, Heart, MapPin, Settings, Bell, Move, Star, Tag, Trophy } from 'lucide-react';
 
-export const EmptyState = ({ icon: Icon, title, description, action }) => (
+export const EmptyState = ({ icon: Icon, title, description, action, actionLink }) => (
   <motion.div 
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
@@ -10,15 +10,20 @@ export const EmptyState = ({ icon: Icon, title, description, action }) => (
     <div className="w-20 h-20 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-6">
       <Icon className="w-8 h-8 text-gray-400" />
     </div>
-    <h3 className="text-xl font-display font-bold text-gray-900 dark:text-white mb-2">{title}</h3>
+    <h3 className="text-xl font-display font-bold text-gray-900 dark:text-white">{title}</h3>
     <p className="text-sm text-muted-foreground max-w-sm mb-6">{description}</p>
     {action && (
-      <button className="border border-foreground px-8 py-3 text-[11px] font-semibold uppercase tracking-luxe-sm transition-colors hover:bg-foreground hover:text-white">
+      <button 
+        onClick={() => window.location.href = actionLink} // ADDED ACTUAL NAVIGATION HERE
+        className="border border-foreground px-8 py-3 text-[11px] font-semibold uppercase tracking-luxe-sm transition-colors hover:bg-foreground hover:text-white"
+      >
         {action}
       </button>
     )}
   </motion.div>
 );
+
+// NOTE: Update the import at the top of ProfileUI.jsx to include 'motion' if it's not there!
 
 export const SkeletonCard = () => (
   <div className="animate-pulse bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700">
