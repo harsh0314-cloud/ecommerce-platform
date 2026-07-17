@@ -90,7 +90,7 @@ const ProfileHeader = ({ user, setActiveTab }) => (
         <p className="text-sm text-muted-foreground mt-1">{user?.email}</p>
         <div className="flex items-center gap-4 mt-3 justify-center sm:justify-start">
           <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 px-3 py-1 rounded-full border border-border">
-            Member since {user?.createdAt ? new Date(user.createdAt).getFullYear() : '2024'}
+            Member since {user?.createdAt ? new Date(user.createdAt).getFullYear() : '2026'}
           </span>
           <span className="text-xs font-semibold text-amber-700 bg-amber-50 dark:bg-amber-900/30 px-3 py-1 rounded-full border border-amber-200 dark:border-amber-800">
             {user?.role || 'GOLD'} TIER
@@ -295,15 +295,18 @@ export default function Profile() {
     const fetchData = async () => {
       setLoading(true);
       try {
-        if (activeTab === 'orders') {
-          const res = await api.get('/orders/myorders');
-          setOrders(res.data?.orders || res.data || []);
-        } else if (activeTab === 'wishlist') {
-          const res = await api.get('/wishlist');
-          setWishlist(res.data?.items || res.data || []);
+        // Fetch data for Dashboard, Orders, and Wishlist simultaneously
+        if (['dashboard', 'orders', 'wishlist'].includes(activeTab)) {
+          const [ordersRes, wishlistRes] = await Promise.all([
+            api.get('/orders/myorders'),
+            api.get('/wishlist')
+          ]);
+          
+          setOrders(ordersRes.data?.orders || ordersRes.data || []);
+          setWishlist(wishlistRes.data?.items || wishlistRes.data || []);
         }
       } catch (error) {
-        console.error(`Failed to fetch ${activeTab}:`, error);
+        console.error(`Failed to fetch profile data:`, error);
       } finally {
         setLoading(false);
       }
