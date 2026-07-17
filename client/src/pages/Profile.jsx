@@ -142,7 +142,13 @@ const DashboardTab = ({ orders, wishlist, loading }) => (
         ))}
       </div>
     ) : (
-      <EmptyState icon={Package} title="No orders yet" description="Looks like you haven't placed any orders. Start shopping to see them here." action="Shop Now" />
+      <EmptyState 
+        icon={Package} 
+        title="No orders yet" 
+        description="Looks like you haven't placed any orders. Start shopping to see them here." 
+        actionLink="/products"
+        action="Shop Now" 
+      />
     )}
   </div>
 );
@@ -181,7 +187,7 @@ const OrdersTab = ({ orders, loading }) => (
         ))}
       </div>
     ) : (
-      <EmptyState icon={Package} title="No orders found" description="You haven't placed any orders yet." action="Start Shopping" />
+      <EmptyState icon={Package} title="No orders found" description="You haven't placed any orders yet." actionLink="/products" action="Start Shopping" />
     )}
   </div>
 );
@@ -190,7 +196,7 @@ const WishlistTab = ({ wishlist, loading }) => (
   <div>
     <SectionTitle>My Wishlist ({wishlist.length})</SectionTitle>
     {loading ? (
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-6"><SkeletonCard /><SkeletonCard /><SkeletonCard /><SkeletonCard /></div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-6"><SkeletonCard /><SkeletonCard /><SkeletonCard /><SkeletonCard /><SkeletonCard /></div>
     ) : wishlist.length > 0 ? (
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
         {wishlist.map(item => (
@@ -207,7 +213,13 @@ const WishlistTab = ({ wishlist, loading }) => (
         ))}
       </div>
     ) : (
-      <EmptyState icon={Heart} title="Your wishlist is empty" description="Save items you love for later." action="Explore Products" />
+      <EmptyState 
+        icon={Heart} 
+        title="Your wishlist is empty" 
+        description="Save items you love for later." 
+        actionLink="/products"
+        action="Explore Products" 
+      />
     )}
   </div>
 );
@@ -290,34 +302,39 @@ export default function Profile() {
     const fetchData = async () => {
       setLoading(true);
       try {
-        // Fetch Orders
-        const ordersRes = await api.get('/orders/myorders').catch(err => {
+        // Let the "let" variables exist outside the catch blocks so they are accessible later
+        let ordersRes;
+        let wishlistRes;
+
+        try {
+          ordersRes = await api.get('/orders/myorders');
+        } catch (err) {
           console.warn('Orders fetch failed:', err.message);
-          return { data: null };
-        });
+          ordersRes = { data: null }; // Assign null so parsing doesn't crash
+        }
 
-        // Fetch Wishlist (Safely ignore if route doesn't exist on backend)
-        const wishlistRes = await api.get('/wishlist').catch(err => {
+        try {
+          wishlistRes = await api.get('/wishlist');
+        } catch (err) {
           console.warn('Wishlist endpoint not found (404 is normal if route doesn,t exist yet)');
-          return { data: null };
-        });
+          wishlistRes = { data: null }; // Assign null so parsing doesn't crash
+        }
 
-      // INDESTRUCTURE THE UNWRAPPED DATA SAFELy
-      let parsedOrders = [];
-      let parsedWishlist = [];
+        // INDESTRUCTURE THE UNWRAPPED DATA SAFELY
+        let parsedOrders = [];
+        let parsedWishlist = [];
 
-      // 1. Check if it's a direct array (e.g., just `[...]`)
-      if (Array.isArray(ordersRes?.data)) {
-        parsedOrders = ordersRes.data;
-      } 
-      // 2. Check if it's wrapped in an object key like { orders: [...] }
-      else if (ordersRes?.data?.orders && Array.isArray(ordersRes.data.orders)) {
-        parsedOrders = ordersRes.data.orders;
-      }
+        // Check if it's a direct array (e.g., just `[...]`)
+        if (Array.isArray(ordersRes?.data)) {
+          parsedOrders = ordersRes.data;
+        } 
+        // Fallback: If not an array, maybe the backend returned { orders: [...] } instead of just [...]
+        else if (ordersRes?.data?.orders && Array.isArray(ordersRes.data.orders)) {
+          parsedOrders = ordersRes.data.orders;
+        }
 
-      // 3. Fallback: Check if it's wrapped in an items key { items: [...] }
-      if (parsedWishlist?.length > 0) setWishlist(parsedWishlist);
-      if (parsedOrders?.length > 0) setOrders(parsedOrders);
+        if (parsedWishlist?.length > 0) setWishlist(parsedWishlist);
+        if (parsedOrders?.length > 0) setOrders(parsedOrders);
       } catch (error) {
         console.error("Critical Data Fetch Error:", error);
       } finally {
@@ -372,7 +389,7 @@ export default function Profile() {
                   {activeTab === 'wishlist' && <WishlistTab wishlist={wishlist} loading={loading} />}
                   {activeTab === 'settings' && <SettingsTab user={user} />}
                   
-                  {activeTab === 'addresses' && <EmptyState icon={MapPin} title="No saved addresses" description="Add your shipping addresses for a faster checkout experience." action="Add Address" />}
+                  {activeTab === 'addresses' && <EmptyState icon={MapPin} title="No saved addresses" description="Add your shipping addresses for a faster checkout experience." actionLink="/products" action="Add Address" />}
                   {activeTab === 'coupons' && <EmptyState icon={Tag} title="No coupons available" description="You don't have any coupons right now. Check back later for exclusive offers!" />}
                   {activeTab === 'rewards' && <ComingSoonCard title="Loyalty Rewards" description="Earn points on every purchase and redeem them for exclusive discounts." icon={Trophy} />}
                   {activeTab === 'reviews' && <EmptyState icon={Star} title="No reviews yet" description="Share your thoughts on products you've purchased to help other customers." />}
