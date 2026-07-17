@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import { DollarSign, ShoppingBag, Users, ChevronRight, Package, Mail, Phone } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function Dashboard() {
+  const navigate = useNavigate(); // ADDED THIS LINE
   const [stats, setStats] = useState({ totalOrders: 0, totalRevenue: 0, users: 0 });
   const [activeTab, setActiveTab] = useState(null); // 'revenue', 'orders', 'customers'
   const [data, setData] = useState([]);
@@ -128,7 +130,13 @@ export default function Dashboard() {
                         <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                           {data.map(order => (
                             <tr key={order.id} className="text-sm text-gray-700 dark:text-gray-300">
-                              <td className="py-4 pr-4 font-medium text-blue-600">{order.orderNumber}</td>
+                              {/* ADDED ONCLICK AND CURSOR-POINTER HERE */}
+                              <td 
+                                onClick={() => navigate(`/admin/orders/${order.id}`)} 
+                                className="py-4 pr-4 font-medium text-blue-600 cursor-pointer hover:underline"
+                              >
+                                {order.orderNumber}
+                              </td>
                               <td className="py-4 pr-4">{order.user?.firstName} {order.user?.lastName}</td>
                               <td className="py-4 pr-4 text-gray-500">{new Date(order.createdAt).toLocaleDateString()}</td>
                               <td className="py-4 pr-4">
@@ -151,7 +159,13 @@ export default function Dashboard() {
                         <div key={order.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
                           <div className="flex justify-between items-center mb-4">
                             <div>
-                              <p className="font-bold text-gray-900 dark:text-white">{order.orderNumber}</p>
+                              {/* ADDED ONCLICK AND CURSOR-POINTER HERE */}
+                              <p 
+                                onClick={() => navigate(`/admin/orders/${order.id}`)} 
+                                className="font-bold text-gray-900 dark:text-white cursor-pointer hover:underline"
+                              >
+                                {order.orderNumber}
+                              </p>
                               <p className="text-xs text-gray-500">{new Date(order.createdAt).toLocaleString()}</p>
                             </div>
                             <span className={`px-2 py-1 rounded-full text-xs font-semibold ${order.status === 'CONFIRMED' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
