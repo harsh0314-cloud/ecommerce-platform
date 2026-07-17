@@ -285,33 +285,39 @@ export default function Profile() {
   const [wishlist, setWishlist] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // INDESTRUCTIBLE DATA FETCHING
+  // INDEPENDENT FETCHING (One failing won't break the other)
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        // Fetch Data (Removed silent catches so we can see the actual data structure)
-        const [ordersRes, wishlistRes] = await Promise.all([
-          api.get('/orders/myorders'),
-          api.get('/wishlist'),
-        ]);
+        // Fetch Orders
+        const ordersRes = await api.get('/orders/myorders').catch(err => {
+          console.warn('Orders fetch failed:', err.message);
+          return { data: null };
+        });
+
+        // Fetch Wishlist (Safely ignore if route doesn't exist on backend)
+        const wishlistRes = await api.get('/wishlist').catch(err => {
+          console.warn('Wishlist endpoint not found (404 is normal if route doesn,t exist yet)');
+          return { data: null };
+        });
 
         // INDESTRUCTURE THE UNWRAPPED DATA SAFELY
         let parsedOrders = [];
         let parsedWishlist = [];
 
         // Check if the unwrapped response.data is the array directly (Happens because of your Axios interceptor: response.data = response.data.data)
-        if (Array.isArray(ordersRes.data)) {
+        if (Array.isArray(ordersRes?.data)) {
           parsedOrders = ordersRes.data;
         } 
         // Fallback: If not an array, maybe the backend returned { orders: [...] } instead of just [...]
-        else if (Array.isArray(ordersRes.data?.orders)) {
+        else if (Array.isArray(ordersRes?.data?.orders)) {
           parsedOrders = ordersRes.data.orders;
         }
 
-        if (Array.isArray(wishlistRes.data)) {
+        if (Array.isArray(wishlistRes?.data)) {
           parsedWishlist = wishlistRes.data;
-        } else if (Array.isArray(wishlistRes.data?.items)) {
+        } else if (Array.isArray(wishlistRes?.data?.items)) {
           parsedWishlist = wishlistRes.data.items;
         }
 
