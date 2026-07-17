@@ -290,24 +290,33 @@ export default function Profile() {
     const fetchData = async () => {
       setLoading(true);
       try {
-        // Fetch both in parallel. If one fails, the other still succeeds.
-                const [ordersRes, wishlistRes] = await Promise.all([
-          api.get('/orders/myorders').catch(err => {
-            console.error("Orders API Error:", err.message);
-            return { data: null };
-          }),
-          api.get('/wishlist').catch(err => {
-            console.error("Wishlist API Error:", err.message);
-            return { data: null };
-          }),
+        // Fetch Data (Removed silent catches so we can see the actual data structure)
+        const [ordersRes, wishlistRes] = await Promise.all([
+          api.get('/orders/myorders'),
+          api.get('/wishlist'),
         ]);
 
-        if (ordersRes?.data) {
-          setOrders(ordersRes.data?.orders || ordersRes.data || []);
+        // INDESTRUCTURE THE UNWRAPPED DATA SAFELY
+        let parsedOrders = [];
+        let parsedWishlist = [];
+
+        // Check if the unwrapped response.data is the array directly (Happens because of your Axios interceptor: response.data = response.data.data)
+        if (Array.isArray(ordersRes.data)) {
+          parsedOrders = ordersRes.data;
+        } 
+        // Fallback: If not an array, maybe the backend returned { orders: [...] } instead of just [...]
+        else if (Array.isArray(ordersRes.data?.orders)) {
+          parsedOrders = ordersRes.data.orders;
         }
-        if (wishlistRes?.data) {
-          setWishlist(wishlistRes.data?.items || wishlistRes.data || []);
+
+        if (Array.isArray(wishlistRes.data)) {
+          parsedWishlist = wishlistRes.data;
+        } else if (Array.isArray(wishlistRes.data?.items)) {
+          parsedWishlist = wishlistRes.data.items;
         }
+
+        if (parsedOrders.length > 0) setOrders(parsedOrders);
+        if (parsedWishlist.length > 0) setWishlist(parsedWishlist);
       } catch (error) {
         console.error("Critical Data Fetch Error:", error);
       } finally {
