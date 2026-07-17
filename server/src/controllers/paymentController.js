@@ -8,7 +8,6 @@ exports.createRazorpayOrder = async (req, res, next) => {
   try {
     const { firstName, lastName, phone, addressLine1, city, state, postalCode, country } = req.body;
 
-    // 1. Fetch Cart
     const cart = await req.prisma.cart.findUnique({
       where: { userId: req.user.id },
       include: { items: { include: { product: { include: { images: true } } } } }
@@ -18,16 +17,13 @@ exports.createRazorpayOrder = async (req, res, next) => {
       return next(new AppError('Your cart is empty', 400));
     }
 
-    // 2. Calculate Totals using Centralized Logic
     const subtotal = cart.items.reduce((sum, item) => sum + (parseFloat(item.product.price) * item.quantity), 0);
     const pricing = calculateOrderTotals(subtotal);
 
-    // 3. Create Address
     const address = await req.prisma.address.create({
       data: { userId: req.user.id, firstName, lastName, phone, addressLine1, city, state, postalCode, country, isDefault: false }
     });
 
-    // 4. Create Order in DB as PENDING (FIXED VARIABLES HERE)
     const order = await req.prisma.order.create({
       data: {
         orderNumber: 'ORD-' + Date.now(),
@@ -35,9 +31,9 @@ exports.createRazorpayOrder = async (req, res, next) => {
         addressId: address.id,
         subtotal: pricing.subtotal,
         discount: "0.00",
-        shippingCost: pricing.shippingCost, // FIXED: was shippingCost.toFixed(2)
-        tax: pricing.tax,                  // FIXED: was tax.toFixed(2)
-        total: pricing.total,              // FIXED: was total.toFixed(2)
+        shippingCost: pricing.shippingCost,
+        tax: pricing.tax,
+        total: pricing.total,
         status: 'PENDING',
         items: {
           create: cart.items.map(item => ({
@@ -52,24 +48,22 @@ exports.createRazorpayOrder = async (req, res, next) => {
       }
     });
 
-    // 5. Create Razorpay Backend Order (FIXED VARIABLE HERE)
     const instance = new razorpay({
       key_id: process.env.RAZORPAY_KEY_ID,
       key_secret: process.env.RAZORPAY_KEY_SECRET,
     });
 
     const razorpayOrder = await instance.orders.create({
-      amount: Math.round(parseFloat(pricing.total) * 100), // FIXED: was total * 100
+      amount: Math.round(parseFloat(pricing.total) * 100),
       currency: "INR",
       receipt: order.orderNumber,
       notes: { 
         name: `${firstName} ${lastName}`, 
         email: req.user.email,
-        orderId: order.id // CRITICAL for Webhook
+        orderId: order.id 
       },
     });
 
-    // 6. Send details to frontend
     res.status(200).json({
       status: 'success',
       data: {
@@ -102,13 +96,19 @@ exports.verifyRazorpayPayment = async (req, res, next) => {
     }
 
     const body = razorpay_order_id + "|" + razorpay_payment_id;
-    const expectedSignature = crypto.createHmac('sha256', process.env.RAZORPAY_KEY_SECRET).update(body).digest('hex');
+    // Added .trim() to absolutely prevent hidden space errors in the secret key
+    const expectedSignature = crypto.createHmac('sha256', process.env.RAZORPAY_KEY_SECRET?.trim()).update(body).digest('hex');
 
     if (expectedSignature !== razorpay_signature) {
       return next(new AppError('Invalid payment signature', 400));
     }
 
-    const order = await req.prisma.order.findUnique({ where: { id: orderId } });
+    // FIXED: Added include: { items: true } so order.items is not undefined
+    const order = await req.prisma.order.findUnique({ 
+      where: { id: orderId },
+      include: { items: true } 
+    });
+    
     if (!order) return next(new AppError('Order not found', 404));
 
     await req.prisma.$transaction(async (tx) => {
@@ -126,7 +126,7 @@ exports.verifyRazorpayPayment = async (req, res, next) => {
         }
       });
 
-      // Decrement Inventory
+      // Decrement Inventory (Now works because order.items is fetched)
       for (const item of order.items) {
         await tx.inventory.update({
           where: { productId: item.productId },
@@ -157,18 +157,15 @@ exports.handleWebhook = async (req, res, next) => {
       return res.status(400).json({ status: 'error', message: 'Missing webhook signature' });
     }
 
-    // 1. Convert raw buffer to string and verify signature
     const bodyString = req.body.toString();
-    const expectedSignature = crypto.createHmac('sha256', secret).update(bodyString).digest('hex');
+    const expectedSignature = crypto.createHmac('sha256', secret.trim()).update(bodyString).digest('hex');
 
     if (expectedSignature !== signature) {
       return res.status(400).json({ status: 'error', message: 'Invalid signature' });
     }
 
-    // 2. Parse the string into JSON
     const event = JSON.parse(bodyString);
     
-    // 3. Only process successful payments
     if (event.event === 'payment.captured') {
       const payload = event.payload?.payment?.entity;
       const orderId = payload.notes?.orderId;
@@ -177,16 +174,13 @@ exports.handleWebhook = async (req, res, next) => {
 
       const order = await req.prisma.order.findUnique({ where: { id: orderId } });
       
-      // Idempotency: If frontend already verified it, do nothing
       if (!order || order.status === 'CONFIRMED') {
         return res.status(200).json({ status: 'success' });
       }
 
-      // 4. Update DB safely
       await req.prisma.$transaction(async (tx) => {
         await tx.order.update({ where: { id: order.id }, data: { status: 'CONFIRMED' } });
         
-        // Create payment record if it doesn't exist
         if (!await tx.payment.findUnique({ where: { transactionId: payload.id } })) {
           await tx.payment.create({
             data: {
@@ -201,7 +195,6 @@ exports.handleWebhook = async (req, res, next) => {
           });
         }
         
-        // Decrement Inventory
         const orderItems = await tx.orderItem.findMany({ where: { orderId: order.id } });
         for (const item of orderItems) {
           await tx.inventory.update({
@@ -210,7 +203,6 @@ exports.handleWebhook = async (req, res, next) => {
           });
         }
 
-        // Clear Cart
         const cart = await tx.cart.findUnique({ where: { userId: order.userId } });
         if (cart) {
           await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
@@ -218,11 +210,9 @@ exports.handleWebhook = async (req, res, next) => {
       });
     }
 
-    // Always return 200 to Razorpay so they don't retry the webhook
     res.status(200).json({ status: 'success' });
   } catch (error) {
     console.error('WEBHOOK ERROR:', error);
-    // Still return 200 to prevent Razorpay from spamming retries on a code error
     res.status(200).json({ status: 'success' });
   }
 };
