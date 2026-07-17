@@ -358,15 +358,15 @@ export default function Profile() {
       // =====================================================
       // FETCH ORDERS — Try /orders/myorders first, then /orders
       // =====================================================
-      let ordersRes = null;
+            let ordersRes = null;
       try {
-        ordersRes = await api.get('/orders/myorders');
-        console.log('✅ Orders from /orders/myorders:', ordersRes);
+        ordersRes = await api.get('/orders/my-orders'); // Added hyphen
+        console.log('✅ Orders from /orders/my-orders:', ordersRes);
       } catch (err1) {
-        console.warn('⚠️ /orders/myorders failed:', err1.message);
-        // Fallback: try /orders (maybe your backend uses this route)
+        console.warn('⚠️ /orders/my-orders failed:', err1.message);
+        // Fallback: try /orders
         try {
-          ordersRes = await api.get('/orders');
+          ordersRes = await api.get('/orders'); 
           console.log('✅ Orders from /orders:', ordersRes);
         } catch (err2) {
           console.error('❌ Both order endpoints failed:', err2.message);
