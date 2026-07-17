@@ -20,7 +20,7 @@ const collections = [
   { name: 'Accessories', slug: 'accessories', image: 'https://images.pexels.com/photos/20380733/pexels-photo-20380733.jpeg?auto=compress&cs=tinysrgb&w=900' },
 ];
 
-const marqueeItems = ['New Season 2026', 'Free Shipping Over $50', 'Crafted In-House', 'Made To Endure', 'The Icon Collection'];
+const marqueeItems = ['New Season 2026', 'Free Shipping Over ₹500', 'Crafted In-House', 'Made To Endure', 'The Icon Collection'];
 
 function Reveal({ children, delay = 0, className = '' }) {
   return (

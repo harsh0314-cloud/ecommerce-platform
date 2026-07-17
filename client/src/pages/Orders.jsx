@@ -44,7 +44,7 @@ export default function Orders() {
                 </div>
                 <div className="text-left sm:text-right">
                   <p className="text-sm text-muted-foreground">Total</p>
-                  <p className="font-bold text-primary text-lg">${parseFloat(order.total).toFixed(2)}</p>
+                  <p className="font-bold text-primary text-lg">₹{parseFloat(order.total).toFixed(2)}</p>
                 </div>
                 <div>
                   <span className="px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">
@@ -66,7 +66,7 @@ export default function Orders() {
                       <p className="font-medium text-foreground">{item.name}</p>
                       <p className="text-sm text-muted-foreground">Qty: {item.quantity}</p>
                     </div>
-                    <p className="font-medium text-foreground">${parseFloat(item.price).toFixed(2)}</p>
+                    <p className="font-medium text-foreground">₹{parseFloat(item.price).toFixed(2)}</p>
                   </div>
                 ))}
               </div>
