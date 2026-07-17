@@ -11,7 +11,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import AddProduct from './pages/admin/AddProduct';
 import ProductDetails from './pages/ProductDetails';
-import Checkout from './pages/Checkout';
+import CheckoutPage from './pages/CheckoutPage';
 import Orders from './pages/Orders';
 import ProtectedAdminRoute from './components/ProtectedAdminRoute';
 import AdminLayout from './components/admin/AdminLayout';
@@ -55,7 +55,7 @@ function AnimatedRoutes() {
           <Route path="/products/:slug" element={<Page><ProductDetails /></Page>} />
           <Route path="/cart" element={<Page><Cart /></Page>} />
           <Route path="/wishlist" element={<Page><Wishlist /></Page>} />
-          <Route path="/checkout" element={<Page><Checkout /></Page>} />
+          <Route path="/checkout" element={<Page><CheckoutPage /></Page>} />
           <Route path="/login" element={<Page><Login /></Page>} />
           <Route path="/register" element={<Page><Register /></Page>} />
           <Route path="/orders" element={<Page><Orders /></Page>} />

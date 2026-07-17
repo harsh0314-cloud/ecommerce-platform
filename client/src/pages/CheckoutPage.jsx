@@ -8,7 +8,7 @@ import { fmtPrice } from '../components/ProductCard';
 const input = 'w-full border-0 border-b border-input bg-transparent px-0 py-2.5 text-sm focus:border-foreground focus:ring-0';
 const label = 'overline text-muted-foreground';
 
-export default function Checkout() {
+export default function CheckoutPage() {
   const { items, total: cartSubtotal, fetchCart } = useCartStore();
   const navigate = useNavigate();
 
@@ -20,21 +20,13 @@ export default function Checkout() {
   const [loading, setLoading] = useState(false);
   const [scriptLoaded, setScriptLoaded] = useState(false);
 
-  // Load Razorpay Browser Script dynamically
   useEffect(() => {
     const loadScript = () => {
       return new Promise((resolve) => {
-        if (window.Razorpay) {
-          setScriptLoaded(true);
-          resolve(true);
-          return;
-        }
+        if (window.Razorpay) { setScriptLoaded(true); resolve(true); return; }
         const script = document.createElement('script');
         script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-        script.onload = () => {
-          setScriptLoaded(true);
-          resolve(true);
-        };
+        script.onload = () => { setScriptLoaded(true); resolve(true); };
         script.onerror = () => resolve(false);
         document.body.appendChild(script);
       });
@@ -42,8 +34,6 @@ export default function Checkout() {
     loadScript();
   }, []);
 
-  // Note: Frontend calculation is for UI display only. 
-  // The backend enforces the exact mathematical total securely.
   const tax = cartSubtotal * 0.18;
   const shipping = cartSubtotal > 500 ? 0 : 40;
   const finalTotal = Math.max(0, cartSubtotal + tax + shipping - discount).toFixed(2);
@@ -73,10 +63,8 @@ export default function Checkout() {
         await fetchCart();
         navigate(`/payment/success?orderId=${response.data.order.id}`);
       } else {
-        // ONLY attempt to open Razorpay if the API call succeeds
         const res = await api.post('/payments/create-razorpay-order', { ...form });
         
-        // Ensure we have the data before opening the modal
         if (!res.data || !res.data.key) {
           throw new Error("Failed to initialize payment gateway.");
         }
@@ -91,23 +79,20 @@ export default function Checkout() {
           prefill: res.data.prefill,
           theme: res.data.theme,
           handler: async function (response) {
-            // 1. Verify payment on backend WITH SIGNATURE AND ORDER ID
             try {
               await api.post('/payments/verify-razorpay', {
                 razorpay_order_id: response.razorpay_order_id,
                 razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature, // CRITICAL FIX
-                orderId: res.data.orderId                      // CRITICAL FIX
+                razorpay_signature: response.razorpay_signature,
+                orderId: res.data.orderId
               });
               
-              // 2. ONLY redirect if verification succeeds
               await fetchCart();
               toast.success('Payment successful!');
               navigate(`/payment/success?orderId=${res.data.orderId}`);
             } catch (err) {
-              // BLOCK redirect if verification fails
-              console.error("Payment verification failed.");
-              toast.error('Payment verification failed. Contact support if money was deducted.');
+              // THIS IS THE MOST IMPORTANT LINE: It forces the real backend error to show
+              toast.error(err.message || 'Unknown verification error');
             }
           },
           modal: {
@@ -118,7 +103,6 @@ export default function Checkout() {
           }
         };
         
-        // Use window.Razorpay (from the script tag), NOT the npm package
         const rzp = new window.Razorpay(options);
         rzp.open();
       }
@@ -139,7 +123,6 @@ export default function Checkout() {
   return (
     <div className="container-luxe py-14">
       <h1 className="mb-12 font-display text-5xl font-bold tracking-tight sm:text-6xl">Checkout</h1>
-
       <div className="grid gap-14 lg:grid-cols-3">
         <div className="space-y-14 lg:col-span-2">
           <form id="checkout-form" onSubmit={handleSubmit} className="space-y-14">
@@ -159,7 +142,6 @@ export default function Checkout() {
                 </div>
               </div>
             </section>
-
             <section>
               <h2 className="mb-8 font-display text-lg font-bold uppercase tracking-luxe-sm">02 — Payment</h2>
               <div className="space-y-3">
@@ -176,8 +158,6 @@ export default function Checkout() {
             </section>
           </form>
         </div>
-
-        {/* Summary */}
         <div className="h-fit bg-surface p-8 lg:sticky lg:top-28">
           <h2 className="font-display text-lg font-bold uppercase tracking-luxe-sm">Order Summary</h2>
           <div className="mt-6 space-y-3">
@@ -188,13 +168,11 @@ export default function Checkout() {
               </div>
             ))}
           </div>
-
           <div className="mt-6 flex gap-2 border-t border-border pt-6">
             <input type="text" value={couponCode} onChange={(e) => setCouponCode(e.target.value.toUpperCase())} placeholder="Coupon code" data-testid="coupon-input" className="flex-1 border-0 border-b border-input bg-transparent px-0 py-2 text-sm focus:border-foreground focus:ring-0" />
             <button type="button" onClick={handleApplyCoupon} data-testid="coupon-apply" className="border border-foreground px-5 text-[11px] font-semibold uppercase tracking-luxe-sm transition-colors hover:bg-foreground hover:text-white">Apply</button>
           </div>
           {couponMessage && <p className="mt-2 text-xs font-semibold text-green-700">{couponMessage}</p>}
-
           <div className="mt-6 space-y-2 border-t border-border pt-6 text-sm">
             <div className="flex justify-between"><span className="text-muted-foreground">Subtotal</span><span>{fmtPrice(cartSubtotal)}</span></div>
             <div className="flex justify-between"><span className="text-muted-foreground">Shipping</span><span>{shipping === 0 ? 'Free' : fmtPrice(shipping)}</span></div>
@@ -202,7 +180,6 @@ export default function Checkout() {
             {discount > 0 && <div className="flex justify-between text-green-700"><span>Discount</span><span>-₹{Math.round(discount).toLocaleString('en-IN')}</span></div>}
           </div>
           <div className="mt-4 flex justify-between border-t border-border pt-4 font-display text-lg font-bold"><span>Total</span><span>₹{Math.round(finalTotal).toLocaleString('en-IN')}</span></div>
-
           <button type="submit" form="checkout-form" disabled={loading || (paymentMethod === 'ONLINE' && !scriptLoaded)} data-testid="place-order-btn" className="mt-8 w-full bg-foreground py-4 text-[12px] font-semibold uppercase tracking-luxe-sm text-white transition-colors hover:bg-gold disabled:opacity-50">
             {loading ? 'Processing…' : (!scriptLoaded && paymentMethod === 'ONLINE' ? 'Loading Payment Gateway…' : (paymentMethod === 'COD' ? `Place Order · ₹${Math.round(finalTotal).toLocaleString('en-IN')}` : `Pay · ₹${Math.round(finalTotal).toLocaleString('en-IN')}`))}
           </button>
