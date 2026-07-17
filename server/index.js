@@ -64,6 +64,20 @@ const limiter = rateLimit({
 });
 app.use('/api', limiter);
 
+// ==========================================
+// WEBHOOK ROUTE (Must be BEFORE express.json())
+// ==========================================
+const paymentController = require('./src/controllers/paymentController');
+app.post('/api/payments/webhook', 
+  express.raw({ type: 'application/json' }), 
+  paymentController.handleWebhook
+);
+
+// Parsers (Move these DOWN below the webhook)
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+
 // Parsers
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));

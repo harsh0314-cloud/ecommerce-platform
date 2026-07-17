@@ -1,6 +1,7 @@
+const { calculateOrderTotals } = require('../utils/pricing');
 const { AppError } = require('../utils/AppError');
 
-exports.createOrder = async (req, res) => {
+exports.createOrder = async (req, res, next) => {
   try {
     const { firstName, lastName, phone, addressLine1, city, state, postalCode, country } = req.body;
 
@@ -10,30 +11,30 @@ exports.createOrder = async (req, res) => {
     });
 
     if (!cart || cart.items.length === 0) {
-      return res.status(400).json({ status: 'error', message: 'Your cart is empty' });
+      return next(new AppError('Your cart is empty', 400));
     }
 
     const subtotal = cart.items.reduce((sum, item) => sum + (parseFloat(item.product.price) * item.quantity), 0);
-    const tax = parseFloat((subtotal * 0.18).toFixed(2));
-    const shippingCost = subtotal > 500 ? 0 : 40;  
-    const total = parseFloat((subtotal + tax + shippingCost).toFixed(2));
+    
+    // USE THE CENTRALIZED PRICING LOGIC
+    const pricing = calculateOrderTotals(subtotal);
 
     const address = await req.prisma.address.create({
       data: { userId: req.user.id, firstName, lastName, phone, addressLine1, city, state, postalCode, country, isDefault: false }
     });
 
-    const order = await req.prisma.$transaction(async (prisma) => {
-      const newOrder = await prisma.order.create({
+    const order = await req.prisma.$transaction(async (tx) => {
+      const newOrder = await tx.order.create({
         data: {
           orderNumber: 'ORD-' + Date.now(),
           userId: req.user.id,
           addressId: address.id,
-          subtotal: subtotal.toFixed(2), 
+          subtotal: pricing.subtotal, 
           discount: "0.00", 
-          shippingCost: shippingCost.toFixed(2), 
-          tax: tax.toFixed(2), 
-          total: total.toFixed(2),
-          status: 'CONFIRMED',
+          shippingCost: pricing.shippingCost, 
+          tax: pricing.tax, 
+          total: pricing.total,
+          status: 'CONFIRMED', // COD is confirmed immediately
           items: {
               create: cart.items.map(item => ({
               productId: item.productId,
@@ -46,26 +47,60 @@ exports.createOrder = async (req, res) => {
           }
         }
       });
-      await prisma.cartItem.deleteMany({ where: { cartId: cart.id } });
+
+      // ==========================================
+      // THE "SAME THING" -> DECREMENT INVENTORY
+      // ==========================================
+      for (const item of cart.items) {
+        await tx.inventory.update({
+          where: { productId: item.productId },
+          data: { quantity: { decrement: item.quantity } }
+        });
+      }
+
+      await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
       return newOrder;
     });
 
     res.status(201).json({ status: 'success', data: { order } });
   } catch (error) {
-    res.status(500).json({ status: 'error', message: error.message });
+    next(error);
   }
 };
 
-exports.getMyOrders = async (req, res) => {
+exports.getMyOrders = async (req, res, next) => {
   try {
-    const orders = await req.prisma.order.findMany({
-      where: { userId: req.user.id },
-      orderBy: { createdAt: 'desc' },
-      include: { items: true }
+    // 1. Get page and limit from query, set defaults
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    // 2. Run queries in parallel for speed
+    const [orders, total] = await Promise.all([
+      req.prisma.order.findMany({
+        where: { userId: req.user.id },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+        include: { items: true }
+      }),
+      req.prisma.order.count({ where: { userId: req.user.id } })
+    ]);
+
+    res.status(200).json({ 
+      status: 'success', 
+      data: { 
+        orders,
+        pagination: {
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit)
+        }
+      }
     });
-    res.status(200).json({ status: 'success', data: { orders } });
   } catch (error) {
-    res.status(500).json({ status: 'error', message: error.message });
+    next(error);
   }
 };
 
