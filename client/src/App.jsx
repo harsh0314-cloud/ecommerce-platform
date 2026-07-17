@@ -68,6 +68,7 @@ function AnimatedRoutes() {
             <Route index element={<Dashboard />} />
             <Route path="products" element={<ProductList />} />
             <Route path="add-product" element={<AddProduct />} />
+            <Route path="orders/:id" element={<OrderDetails />} />
           </Route>
         </Routes>
       </AnimatePresence>
