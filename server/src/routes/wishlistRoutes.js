@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { getWishlist, addToWishlist, removeFromWishlist } = require('../controllers/wishlistController');
+const { getWishlist, addToWishlist, removeFromWishlist, checkWishlist } = require('../controllers/wishlistController');
 const { authenticate } = require('../middleware/auth');
 
 router.use(authenticate); // All wishlist routes require login
@@ -11,5 +11,7 @@ router.route('/')
 
 router.route('/:productId')
   .delete(removeFromWishlist);
+
+router.get('/check/:productId', checkWishlist);
 
 module.exports = router;

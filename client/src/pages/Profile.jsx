@@ -6,7 +6,8 @@ import { z } from 'zod';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   LayoutDashboard, Package, Heart, MapPin, Tag, Trophy, 
-  Star, Move, Bell, Settings, LogOut, User, ChevronRight, Edit3, Lock
+  Star, Move, Bell, Settings, LogOut, User, ChevronRight, Edit3, Lock,
+  ShoppingCart, Trash2
 } from 'lucide-react';
 import useAuthStore from '../store/authStore';
 import api from '../services/api';
@@ -39,10 +40,12 @@ const sidebarLinks = [
 function extractArray(response) {
   if (!response || !response.data) return [];
   const data = response.data;
+  // After interceptor: data might be the array directly
   if (Array.isArray(data)) return data;
-  if (data.orders && Array.isArray(data.orders)) return data.orders;
-  if (data.items && Array.isArray(data.items)) return data.items;
+  // Before interceptor or nested formats
   if (data.data && Array.isArray(data.data)) return data.data;
+  if (data.items && Array.isArray(data.items)) return data.items;
+  if (data.orders && Array.isArray(data.orders)) return data.orders;
   if (data.data?.orders && Array.isArray(data.data.orders)) return data.data.orders;
   return [];
 }
@@ -97,7 +100,7 @@ const ProfileHeader = ({ user, setActiveTab }) => (
           {user?.firstName} {user?.lastName}
         </h1>
         <p className="text-sm text-muted-foreground mt-1">{user?.email}</p>
-        <div className="flex items-center gap-4 mt-3 justify-center sm:justify-start">
+        <div className="flex items-center gap-3 mt-3 justify-center sm:justify-start">
           <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 px-3 py-1 rounded-full border border-border">
             Member since {user?.createdAt ? new Date(user.createdAt).getFullYear() : '2024'}
           </span>
@@ -134,7 +137,7 @@ const DashboardTab = ({ orders, wishlist, loading, setActiveTab, navigate }) => 
         <StatCard title="Reward Points" value="1,250" icon={Trophy} color="bg-purple-100 text-purple-600" />
       </div>
     </div>
-    
+
     <SectionTitle>Recent Orders</SectionTitle>
     {loading ? (
       <div className="space-y-4"><SkeletonCard /><SkeletonCard /></div>
@@ -233,7 +236,7 @@ const OrdersTab = ({ orders, loading, navigate }) => (
   </div>
 );
 
-const WishlistTab = ({ wishlist, loading }) => (
+const WishlistTab = ({ wishlist, loading, onRemove, onMoveToCart }) => (
   <div>
     <SectionTitle>My Wishlist ({wishlist.length})</SectionTitle>
     {loading ? (
@@ -241,19 +244,37 @@ const WishlistTab = ({ wishlist, loading }) => (
     ) : wishlist.length > 0 ? (
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
         {wishlist.map(item => (
-          <motion.div key={item.id} whileHover={{ y: -5 }} className="group border border-border rounded-xl overflow-hidden bg-white dark:bg-gray-800 hover:shadow-lg transition-all duration-300">
+          <motion.div 
+            key={item.id} 
+            whileHover={{ y: -5 }} 
+            className="group border border-border rounded-xl overflow-hidden bg-white dark:bg-gray-800 hover:shadow-lg transition-all duration-300"
+          >
             <div className="relative aspect-square overflow-hidden bg-gray-100 dark:bg-gray-700">
-              {/* FIXED IMAGE PATH: item.product.images[0].url */}
               <img 
-                src={item.product?.images?.[0]?.url || item.product?.image || 'https://via.placeholder.com/200'} 
-                alt={item.product?.name || item.name} 
+                src={item.image || item.product?.images?.[0]?.url || item.product?.image || 'https://via.placeholder.com/200'} 
+                alt={item.name || item.product?.name} 
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
               />
+              {/* Remove button */}
+              <button
+                onClick={(e) => { e.stopPropagation(); onRemove(item.id); }}
+                className="absolute top-2 right-2 p-2 bg-white/90 dark:bg-black/70 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50 hover:text-red-500"
+              >
+                <Trash2 size={14} />
+              </button>
             </div>
             <div className="p-4">
-              <h3 className="text-sm font-medium text-gray-900 dark:text-white truncate">{item.product?.name || item.name}</h3>
-              <p className="text-lg font-display font-bold mt-2">₹{parseFloat(item.product?.price || 0).toFixed(2)}</p>
-              <button className="w-full mt-3 border border-foreground py-2 text-[11px] font-semibold uppercase tracking-luxe-sm hover:bg-foreground hover:text-white transition-colors">Move to Cart</button>
+              <h3 className="text-sm font-medium text-gray-900 dark:text-white truncate">{item.name || item.product?.name}</h3>
+              <p className="text-lg font-display font-bold mt-2">
+                ₹{parseFloat(item.price || item.product?.price || 0).toFixed(2)}
+              </p>
+              <button 
+                onClick={() => onMoveToCart(item)}
+                className="w-full mt-3 flex items-center justify-center gap-2 border border-foreground py-2 text-[11px] font-semibold uppercase tracking-luxe-sm hover:bg-foreground hover:text-white transition-colors"
+              >
+                <ShoppingCart size={14} />
+                Move to Cart
+              </button>
             </div>
           </motion.div>
         ))}
@@ -346,7 +367,7 @@ export default function Profile() {
     const fetchData = async () => {
       if (!['dashboard', 'orders', 'wishlist'].includes(activeTab)) return;
       setLoading(true);
-      
+
       let ordersRes = null;
       try {
         ordersRes = await api.get('/orders/my-orders');
@@ -357,31 +378,26 @@ export default function Profile() {
           console.error('❌ Both order endpoints failed:', err2.message);
         }
       }
-      
+
       if (ordersRes) {
         const parsedOrders = extractArray(ordersRes);
         setOrders(parsedOrders);
       }
-      
-            let wishlistRes = null;
+
+      let wishlistRes = null;
       try {
         wishlistRes = await api.get('/wishlist');
         console.log('❤️ Raw Wishlist Response:', wishlistRes);
       } catch (err1) {
         console.warn('⚠️ Wishlist endpoint not found');
       }
-      
+
       if (wishlistRes) {
-        let parsedWishlist = [];
-        // Handle your exact backend format: { status: 'success', items: [...] }
-        if (wishlistRes.data?.items && Array.isArray(wishlistRes.data.items)) {
-          parsedWishlist = wishlistRes.data.items;
-        } else if (Array.isArray(wishlistRes.data)) {
-          parsedWishlist = wishlistRes.data;
-        }
+        const parsedWishlist = extractArray(wishlistRes);
+        console.log('✅ Parsed Wishlist:', parsedWishlist);
         setWishlist(parsedWishlist);
       }
-      
+
       setLoading(false);
     };
     fetchData();
@@ -392,13 +408,28 @@ export default function Profile() {
     navigate('/');
   };
 
+  const handleRemoveFromWishlist = async (productId) => {
+    try {
+      await api.delete(`/wishlist/${productId}`);
+      setWishlist(prev => prev.filter(item => item.id !== productId));
+      toast.success('Removed from wishlist');
+    } catch (err) {
+      toast.error('Failed to remove item');
+    }
+  };
+
+  const handleMoveToCart = (item) => {
+    // Navigate to product page or add directly to cart
+    navigate(`/products/${item.slug || item.id}`);
+    toast.success('Navigate to product to add to cart');
+  };
+
   return (
     <div className="min-h-screen bg-gray-50/50 dark:bg-gray-950">
       {isMobileMenuOpen && <div onClick={() => setIsMobileMenuOpen(false)} className="lg:hidden fixed inset-0 bg-black/50 z-40" />}
 
       <div className="container-luxe pt-10 lg:pt-14 pb-14">
-        
-        {/* Mobile Inline Header (NO LONGER HIDES BEHIND MAIN HEADER) */}
+
         <div className="lg:hidden flex items-center justify-between mb-8">
           <h1 className="font-display text-2xl font-bold">My Account</h1>
           <button 
@@ -430,7 +461,7 @@ export default function Profile() {
                 transition={{ duration: 0.3 }}
               >
                 {activeTab === 'dashboard' && <ProfileHeader user={user} setActiveTab={setActiveTab} />}
-                
+
                 <div className="mt-8">
                   {activeTab === 'dashboard' && (
                     <DashboardTab 
@@ -442,9 +473,16 @@ export default function Profile() {
                     />
                   )}
                   {activeTab === 'orders' && <OrdersTab orders={orders} loading={loading} navigate={navigate} />}
-                  {activeTab === 'wishlist' && <WishlistTab wishlist={wishlist} loading={loading} />}
+                  {activeTab === 'wishlist' && (
+                    <WishlistTab 
+                      wishlist={wishlist} 
+                      loading={loading} 
+                      onRemove={handleRemoveFromWishlist}
+                      onMoveToCart={handleMoveToCart}
+                    />
+                  )}
                   {activeTab === 'settings' && <SettingsTab user={user} />}
-                  
+
                   {activeTab === 'addresses' && <EmptyState icon={MapPin} title="No saved addresses" description="Add your shipping addresses for a faster checkout experience." action="Add Address" actionLink="/checkout" />}
                   {activeTab === 'coupons' && <EmptyState icon={Tag} title="No coupons available" description="You don't have any coupons right now. Check back later for exclusive offers!" />}
                   {activeTab === 'rewards' && <ComingSoonCard title="Loyalty Rewards" description="Earn points on every purchase and redeem them for exclusive discounts." icon={Trophy} />}

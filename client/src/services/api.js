@@ -11,7 +11,6 @@ const api = axios.create({
 // REQUEST INTERCEPTOR
 api.interceptors.request.use(
   (config) => {
-    // Read directly from the Zustand persist storage key
     try {
       const authStorage = localStorage.getItem('auth-storage');
       if (authStorage) {
@@ -26,14 +25,13 @@ api.interceptors.request.use(
     }
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
-// RESPONSE INTERCEPTOR
+// RESPONSE INTERCEPTOR — Normalize all success responses
 api.interceptors.response.use(
   (response) => {
+    // Only unwrap if backend sends { status: 'success', data: ... }
     if (response.data && response.data.status === 'success' && response.data.data !== undefined) {
       response.data = response.data.data;
     }
@@ -41,7 +39,6 @@ api.interceptors.response.use(
   },
   (error) => {
     if (error.response?.status === 401) {
-      // Clear the Zustand storage completely on 401
       localStorage.removeItem("auth-storage");
       if (window.location.pathname !== "/login") {
         window.location.href = "/login"; 
