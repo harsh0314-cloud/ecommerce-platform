@@ -16,7 +16,6 @@ const saveLocal = (items) => {
 export default function useWishlist() {
   const [items, setItems] = useState(readLocal);
   const [isLoading, setIsLoading] = useState(false);
-  const [isSynced, setIsSynced] = useState(false);
 
   // Check if user is logged in
   const isLoggedIn = () => {
@@ -56,7 +55,6 @@ export default function useWishlist() {
 
         setItems(formatted);
         saveLocal(formatted);
-        setIsSynced(true);
       } catch (err) {
         console.warn('Backend wishlist fetch failed, using local:', err.message);
         setItems(readLocal());
@@ -80,21 +78,29 @@ export default function useWishlist() {
   }, []);
 
   const isWishlisted = useCallback((id) => {
+    if (!id) return false;
     return items.some((i) => i.id === id);
   }, [items]);
 
   const toggle = useCallback(async (product) => {
-    // Check against CURRENT state (not re-reading from localStorage)
-    const exists = items.some((i) => i.id === product.id);
+    if (!product?.id) {
+      console.error('useWishlist.toggle: product.id is required', product);
+      return false;
+    }
+
+    const productId = product.id;
+
+    // Check against CURRENT React state (not localStorage)
+    const exists = items.some((i) => i.id === productId);
 
     let next;
     if (exists) {
       // REMOVE
-      next = items.filter((i) => i.id !== product.id);
+      next = items.filter((i) => i.id !== productId);
     } else {
       // ADD
       next = [...items, { 
-        id: product.id, 
+        id: productId, 
         name: product.name, 
         slug: product.slug, 
         price: product.price, 
@@ -104,7 +110,7 @@ export default function useWishlist() {
       }];
     }
 
-    // Update state immediately
+    // Update state immediately (optimistic)
     setItems(next);
     saveLocal(next);
 
@@ -112,9 +118,9 @@ export default function useWishlist() {
     if (isLoggedIn()) {
       try {
         if (exists) {
-          await api.delete(`/wishlist/${product.id}`);
+          await api.delete(`/wishlist/${productId}`);
         } else {
-          await api.post('/wishlist', { productId: product.id });
+          await api.post('/wishlist', { productId: productId });
         }
       } catch (err) {
         console.error('Backend wishlist sync failed:', err.message);
@@ -130,11 +136,12 @@ export default function useWishlist() {
   }, [items]);
 
   const remove = useCallback(async (id) => {
+    if (!id) return;
+
     const next = items.filter((i) => i.id !== id);
     setItems(next);
     saveLocal(next);
 
-    // Sync with backend
     if (isLoggedIn()) {
       try {
         await api.delete(`/wishlist/${id}`);
@@ -146,13 +153,5 @@ export default function useWishlist() {
     }
   }, [items]);
 
-  const clear = useCallback(() => {
-    setItems([]);
-    saveLocal([]);
-    if (isLoggedIn()) {
-      // Optionally clear all backend wishlist items one by one
-    }
-  }, []);
-
-  return { items, count: items.length, isWishlisted, toggle, remove, clear, isLoading, isSynced };
+  return { items, count: items.length, isWishlisted, toggle, remove, isLoading };
 }

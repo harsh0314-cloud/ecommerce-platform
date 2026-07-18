@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Heart, Plus, ArrowUpRight } from 'lucide-react';
+import { Heart, Plus } from 'lucide-react';
 import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { useCartStore } from '../store/cartStore';
@@ -20,14 +20,17 @@ export default function ProductCard({ product, index = 0 }) {
   const secondary = product.images?.[1]?.url;
   const onSale = product.comparePrice && Number(product.comparePrice) > Number(product.price);
   const discount = onSale ? Math.round((1 - Number(product.price) / Number(product.comparePrice)) * 100) : 0;
-  const wished = isWishlisted(product.id);
+
+  // CRITICAL FIX: Ensure we use the correct product id
+  const productId = product.id;
+  const wished = isWishlisted(productId);
 
   const handleAdd = async (e) => {
     e.preventDefault();
     e.stopPropagation();
     setAdding(true);
     try {
-      await addToCart(product.id, 1);
+      await addToCart(productId, 1);
       window.dispatchEvent(new Event('open-cart'));
       toast.success(`${product.name} added to bag`);
     } catch {
@@ -37,11 +40,23 @@ export default function ProductCard({ product, index = 0 }) {
     }
   };
 
-  const handleWish = (e) => {
+  const handleWish = async (e) => {
     e.preventDefault();
     e.stopPropagation();
-    const added = toggle(product);
-    toast(added ? 'Saved to wishlist' : 'Removed from wishlist', { icon: added ? '♥' : '♡' });
+
+    if (!productId) {
+      console.error('ProductCard: Missing product.id', product);
+      toast.error('Cannot add to wishlist: missing product ID');
+      return;
+    }
+
+    const added = await toggle(product);
+
+    if (added) {
+      toast.success('Saved to wishlist', { icon: '♥' });
+    } else {
+      toast.success('Removed from wishlist', { icon: '♡' });
+    }
   };
 
   return (
@@ -71,10 +86,13 @@ export default function ProductCard({ product, index = 0 }) {
           <button
             onClick={handleWish}
             data-testid={`wishlist-toggle-${product.slug}`}
-            aria-label="Toggle wishlist"
+            aria-label={wished ? 'Remove from wishlist' : 'Add to wishlist'}
             className="absolute right-4 top-4 z-20 flex h-10 w-10 items-center justify-center rounded-full bg-white/70 backdrop-blur-md transition-all duration-300 hover:bg-white"
           >
-            <Heart size={17} className={wished ? 'fill-foreground text-foreground' : 'text-foreground'} />
+            <Heart 
+              size={17} 
+              className={wished ? 'fill-red-500 text-red-500' : 'text-foreground'} 
+            />
           </button>
 
           {/* Images */}
