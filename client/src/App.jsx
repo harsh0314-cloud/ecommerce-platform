@@ -23,6 +23,7 @@ import Profile from './pages/Profile';
 import OrderDetails from './pages/OrderDetails';
 import Cart from './pages/Cart';
 import Wishlist from './pages/Wishlist';
+import AdminCoupons from './pages/admin/AdminCoupons';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -68,6 +69,7 @@ function AnimatedRoutes() {
             <Route index element={<Dashboard />} />
             <Route path="products" element={<ProductList />} />
             <Route path="add-product" element={<AddProduct />} />
+            <Route path="coupons" element={<AdminCoupons />} />
           </Route>
         </Routes>
       </AnimatePresence>

@@ -4,6 +4,7 @@ import { useCartStore } from '../store/cartStore';
 import api from '../services/api';
 import toast from 'react-hot-toast';
 import { fmtPrice } from '../components/ProductCard';
+import { Tag, X, Truck, Receipt, ShieldCheck } from 'lucide-react';
 
 const input = 'w-full border-0 border-b border-input bg-transparent px-0 py-2.5 text-sm focus:border-foreground focus:ring-0';
 const label = 'overline text-muted-foreground';
@@ -12,11 +13,21 @@ export default function CheckoutPage() {
   const { items, total: cartSubtotal, fetchCart } = useCartStore();
   const navigate = useNavigate();
 
-  const [form, setForm] = useState({ firstName: '', lastName: '', phone: '', addressLine1: '', city: '', state: '', postalCode: '', country: 'IN' });
+  const [form, setForm] = useState({ 
+    firstName: '', 
+    lastName: '', 
+    phone: '', 
+    addressLine1: '', 
+    city: '', 
+    state: '', 
+    postalCode: '', 
+    country: 'IN' 
+  });
   const [paymentMethod, setPaymentMethod] = useState('ONLINE');
   const [couponCode, setCouponCode] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [discount, setDiscount] = useState(0);
-  const [couponMessage, setCouponMessage] = useState('');
+  const [couponLoading, setCouponLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [scriptLoaded, setScriptLoaded] = useState(false);
 
@@ -40,31 +51,52 @@ export default function CheckoutPage() {
   const updateForm = (field, value) => setForm({ ...form, [field]: value });
 
   const handleApplyCoupon = async () => {
-    if (!couponCode) return;
+    if (!couponCode.trim()) return;
+    setCouponLoading(true);
     try {
-      const res = await api.post('/orders/validate-coupon', { code: couponCode, subtotal: cartSubtotal });
-      setDiscount(parseFloat(res.data.discount));
-      setCouponMessage(res.data.message.replace('$', '₹'));
-      toast.success(res.data.message);
+      const res = await api.post('/coupons/validate', { 
+        code: couponCode, 
+        subtotal: cartSubtotal 
+      });
+
+      const couponData = res.data;
+      setDiscount(parseFloat(couponData.discount));
+      setAppliedCoupon(couponData);
+      toast.success(couponData.message);
     } catch (error) {
       setDiscount(0);
-      setCouponMessage(error.message);
-      toast.error(error.message);
+      setAppliedCoupon(null);
+      toast.error(error.message || 'Invalid coupon');
+    } finally {
+      setCouponLoading(false);
     }
+  };
+
+  const handleRemoveCoupon = () => {
+    setCouponCode('');
+    setAppliedCoupon(null);
+    setDiscount(0);
+    toast('Coupon removed');
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
+      const orderPayload = { 
+        ...form, 
+        paymentMethod: paymentMethod === 'COD' ? 'CASH_ON_DELIVERY' : 'RAZORPAY',
+        couponCode: appliedCoupon?.code || null
+      };
+
       if (paymentMethod === 'COD') {
-        const response = await api.post('/orders', { ...form, paymentMethod: 'CASH_ON_DELIVERY' });
+        const response = await api.post('/orders', orderPayload);
         toast.success('Order placed successfully!');
         await fetchCart();
         navigate(`/payment/success?orderId=${response.data.order.id}`);
       } else {
-        const res = await api.post('/payments/create-razorpay-order', { ...form });
-        
+        const res = await api.post('/payments/create-razorpay-order', { ...form, couponCode: appliedCoupon?.code });
+
         if (!res.data || !res.data.key) {
           throw new Error("Failed to initialize payment gateway.");
         }
@@ -86,12 +118,11 @@ export default function CheckoutPage() {
                 razorpay_signature: response.razorpay_signature,
                 orderId: res.data.orderId
               });
-              
+
               await fetchCart();
               toast.success('Payment successful!');
               navigate(`/payment/success?orderId=${res.data.orderId}`);
             } catch (err) {
-              // THIS IS THE MOST IMPORTANT LINE: It forces the real backend error to show
               toast.error(err.message || 'Unknown verification error');
             }
           },
@@ -102,7 +133,7 @@ export default function CheckoutPage() {
             }
           }
         };
-        
+
         const rzp = new window.Razorpay(options);
         rzp.open();
       }
@@ -122,67 +153,122 @@ export default function CheckoutPage() {
 
   return (
     <div className="container-luxe py-14">
-      <h1 className="mb-12 font-display text-5xl font-bold tracking-tight sm:text-6xl">Checkout</h1>
-      <div className="grid gap-14 lg:grid-cols-3">
-        <div className="space-y-14 lg:col-span-2">
-          <form id="checkout-form" onSubmit={handleSubmit} className="space-y-14">
-            <section>
-              <h2 className="mb-8 font-display text-lg font-bold uppercase tracking-luxe-sm">01 — Shipping Details</h2>
-              <div className="space-y-6">
-                <div className="grid grid-cols-2 gap-6">
-                  <div><label className={label}>First Name</label><input required type="text" value={form.firstName} onChange={(e) => updateForm('firstName', e.target.value)} data-testid="checkout-firstname" className={input} /></div>
-                  <div><label className={label}>Last Name</label><input required type="text" value={form.lastName} onChange={(e) => updateForm('lastName', e.target.value)} data-testid="checkout-lastname" className={input} /></div>
+      <h1 className="mb-12 font-display text-3xl font-bold tracking-tight">Checkout</h1>
+
+      <div className="grid gap-12 lg:grid-cols-[1fr_380px]">
+        {/* LEFT: Form */}
+        <form onSubmit={handleSubmit} className="space-y-8">
+
+          {/* Shipping */}
+          <div className="space-y-6">
+            <h2 className="font-display text-lg font-semibold">Shipping Address</h2>
+            <div className="grid gap-6 sm:grid-cols-2">
+              <div><label className={label}>First Name</label><input required className={input} value={form.firstName} onChange={(e) => updateForm('firstName', e.target.value)} /></div>
+              <div><label className={label}>Last Name</label><input required className={input} value={form.lastName} onChange={(e) => updateForm('lastName', e.target.value)} /></div>
+              <div><label className={label}>Phone</label><input required type="tel" className={input} value={form.phone} onChange={(e) => updateForm('phone', e.target.value)} /></div>
+              <div className="sm:col-span-2"><label className={label}>Address</label><input required className={input} value={form.addressLine1} onChange={(e) => updateForm('addressLine1', e.target.value)} /></div>
+              <div><label className={label}>City</label><input required className={input} value={form.city} onChange={(e) => updateForm('city', e.target.value)} /></div>
+              <div><label className={label}>State</label><input required className={input} value={form.state} onChange={(e) => updateForm('state', e.target.value)} /></div>
+              <div><label className={label}>Postal Code</label><input required className={input} value={form.postalCode} onChange={(e) => updateForm('postalCode', e.target.value)} /></div>
+              <div><label className={label}>Country</label><input required className={input} value={form.country} onChange={(e) => updateForm('country', e.target.value)} /></div>
+            </div>
+          </div>
+
+          {/* Payment */}
+          <div className="space-y-4">
+            <h2 className="font-display text-lg font-semibold">Payment Method</h2>
+            <div className="flex gap-4">
+              <button type="button" onClick={() => setPaymentMethod('ONLINE')} className={`flex-1 border p-4 text-left transition-colors ${paymentMethod === 'ONLINE' ? 'border-foreground bg-surface' : 'border-border'}`}>
+                <div className="font-semibold text-sm">Pay Online</div>
+                <div className="text-xs text-muted-foreground mt-1">Credit/Debit Card, UPI, NetBanking</div>
+              </button>
+              <button type="button" onClick={() => setPaymentMethod('COD')} className={`flex-1 border p-4 text-left transition-colors ${paymentMethod === 'COD' ? 'border-foreground bg-surface' : 'border-border'}`}>
+                <div className="font-semibold text-sm">Cash on Delivery</div>
+                <div className="text-xs text-muted-foreground mt-1">Pay when you receive</div>
+              </button>
+            </div>
+          </div>
+
+          <button type="submit" disabled={loading} className="w-full bg-foreground py-4 text-[11px] font-semibold uppercase tracking-luxe-sm text-white transition-opacity hover:opacity-90 disabled:opacity-50">
+            {loading ? 'Processing...' : paymentMethod === 'COD' ? 'Place Order' : 'Pay Securely'}
+          </button>
+        </form>
+
+        {/* RIGHT: Order Summary */}
+        <div className="space-y-6">
+          <h2 className="font-display text-lg font-semibold">Order Summary</h2>
+
+          {/* Items */}
+          <div className="space-y-4 border-b border-border pb-6">
+            {items.map(item => (
+              <div key={item.id} className="flex gap-4">
+                <img src={item.product?.images?.[0]?.url} alt={item.product?.name} className="h-16 w-16 rounded-md object-cover" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium">{item.product?.name}</p>
+                  <p className="text-xs text-muted-foreground">Qty: {item.quantity}</p>
                 </div>
-                <div><label className={label}>Phone</label><input required type="tel" value={form.phone} onChange={(e) => updateForm('phone', e.target.value)} data-testid="checkout-phone" className={input} /></div>
-                <div><label className={label}>Address</label><input required type="text" value={form.addressLine1} onChange={(e) => updateForm('addressLine1', e.target.value)} data-testid="checkout-address" className={input} /></div>
-                <div className="grid grid-cols-3 gap-6">
-                  <div><label className={label}>City</label><input required type="text" value={form.city} onChange={(e) => updateForm('city', e.target.value)} data-testid="checkout-city" className={input} /></div>
-                  <div><label className={label}>State</label><input required type="text" value={form.state} onChange={(e) => updateForm('state', e.target.value)} data-testid="checkout-state" className={input} /></div>
-                  <div><label className={label}>Zip</label><input required type="text" value={form.postalCode} onChange={(e) => updateForm('postalCode', e.target.value)} data-testid="checkout-zip" className={input} /></div>
-                </div>
-              </div>
-            </section>
-            <section>
-              <h2 className="mb-8 font-display text-lg font-bold uppercase tracking-luxe-sm">02 — Payment</h2>
-              <div className="space-y-3">
-                {[
-                  { id: 'ONLINE', label: 'UPI / Credit / Debit Card', sub: 'Razorpay, PhonePe, GPay' },
-                  { id: 'COD', label: 'Cash on Delivery', sub: 'Pay when you receive' },
-                ].map((m) => (
-                  <label key={m.id} data-testid={`payment-${m.id}`} className={`flex cursor-pointer items-center gap-4 border p-5 transition-colors ${paymentMethod === m.id ? 'border-foreground bg-surface' : 'border-border hover:border-foreground/40'}`}>
-                    <input type="radio" name="payment" value={m.id} checked={paymentMethod === m.id} onChange={(e) => setPaymentMethod(e.target.value)} className="h-4 w-4 text-foreground focus:ring-0" />
-                    <div><p className="text-sm font-semibold">{m.label}</p><p className="text-xs text-muted-foreground">{m.sub}</p></div>
-                  </label>
-                ))}
-              </div>
-            </section>
-          </form>
-        </div>
-        <div className="h-fit bg-surface p-8 lg:sticky lg:top-28">
-          <h2 className="font-display text-lg font-bold uppercase tracking-luxe-sm">Order Summary</h2>
-          <div className="mt-6 space-y-3">
-            {items.map((item) => (
-              <div key={item.id} className="flex justify-between gap-3 text-sm">
-                <span className="text-muted-foreground">{item.product.name} × {item.quantity}</span>
-                <span className="font-semibold">{fmtPrice(item.product.price * item.quantity)}</span>
+                <p className="text-sm font-semibold">{fmtPrice(parseFloat(item.product?.price) * item.quantity)}</p>
               </div>
             ))}
           </div>
-          <div className="mt-6 flex gap-2 border-t border-border pt-6">
-            <input type="text" value={couponCode} onChange={(e) => setCouponCode(e.target.value.toUpperCase())} placeholder="Coupon code" data-testid="coupon-input" className="flex-1 border-0 border-b border-input bg-transparent px-0 py-2 text-sm focus:border-foreground focus:ring-0" />
-            <button type="button" onClick={handleApplyCoupon} data-testid="coupon-apply" className="border border-foreground px-5 text-[11px] font-semibold uppercase tracking-luxe-sm transition-colors hover:bg-foreground hover:text-white">Apply</button>
+
+          {/* Coupon */}
+          <div className="border-b border-border pb-6">
+            {appliedCoupon ? (
+              <div className="flex items-center justify-between rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 p-3">
+                <div className="flex items-center gap-2">
+                  <Tag size={16} className="text-green-600" />
+                  <div>
+                    <p className="text-sm font-semibold text-green-700">{appliedCoupon.code}</p>
+                    <p className="text-xs text-green-600">You saved {fmtPrice(discount)}</p>
+                  </div>
+                </div>
+                <button onClick={handleRemoveCoupon} className="p-1 hover:bg-green-100 rounded">
+                  <X size={16} className="text-green-600" />
+                </button>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <input 
+                  type="text" 
+                  placeholder="Enter coupon code" 
+                  className="flex-1 border border-border rounded-lg px-3 py-2 text-sm uppercase"
+                  value={couponCode}
+                  onChange={(e) => setCouponCode(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleApplyCoupon())}
+                />
+                <button 
+                  onClick={handleApplyCoupon}
+                  disabled={couponLoading || !couponCode.trim()}
+                  className="px-4 py-2 border border-foreground text-[11px] font-semibold uppercase tracking-luxe-sm hover:bg-foreground hover:text-white transition-colors disabled:opacity-50"
+                >
+                  {couponLoading ? '...' : 'Apply'}
+                </button>
+              </div>
+            )}
           </div>
-          {couponMessage && <p className="mt-2 text-xs font-semibold text-green-700">{couponMessage}</p>}
-          <div className="mt-6 space-y-2 border-t border-border pt-6 text-sm">
+
+          {/* Totals */}
+          <div className="space-y-3 text-sm">
             <div className="flex justify-between"><span className="text-muted-foreground">Subtotal</span><span>{fmtPrice(cartSubtotal)}</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Shipping</span><span>{shipping === 0 ? 'Free' : fmtPrice(shipping)}</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">GST (18%)</span><span>₹{Math.round(tax).toLocaleString('en-IN')}</span></div>
-            {discount > 0 && <div className="flex justify-between text-green-700"><span>Discount</span><span>-₹{Math.round(discount).toLocaleString('en-IN')}</span></div>}
+            {discount > 0 && (
+              <div className="flex justify-between text-green-600">
+                <span className="flex items-center gap-1"><Tag size={14} /> Discount</span>
+                <span>-{fmtPrice(discount)}</span>
+              </div>
+            )}
+            <div className="flex justify-between"><span className="text-muted-foreground flex items-center gap-1"><Truck size={14} /> Shipping</span><span>{shipping === 0 ? 'Free' : fmtPrice(shipping)}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground flex items-center gap-1"><Receipt size={14} /> Tax (18%)</span><span>{fmtPrice(tax)}</span></div>
+            <div className="flex justify-between border-t border-border pt-3 text-base font-semibold">
+              <span>Total</span>
+              <span>{fmtPrice(finalTotal)}</span>
+            </div>
           </div>
-          <div className="mt-4 flex justify-between border-t border-border pt-4 font-display text-lg font-bold"><span>Total</span><span>₹{Math.round(finalTotal).toLocaleString('en-IN')}</span></div>
-          <button type="submit" form="checkout-form" disabled={loading || (paymentMethod === 'ONLINE' && !scriptLoaded)} data-testid="place-order-btn" className="mt-8 w-full bg-foreground py-4 text-[12px] font-semibold uppercase tracking-luxe-sm text-white transition-colors hover:bg-gold disabled:opacity-50">
-            {loading ? 'Processing…' : (!scriptLoaded && paymentMethod === 'ONLINE' ? 'Loading Payment Gateway…' : (paymentMethod === 'COD' ? `Place Order · ₹${Math.round(finalTotal).toLocaleString('en-IN')}` : `Pay · ₹${Math.round(finalTotal).toLocaleString('en-IN')}`))}
-          </button>
+
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <ShieldCheck size={14} />
+            <span>Secure checkout powered by Razorpay</span>
+          </div>
         </div>
       </div>
     </div>

@@ -3,7 +3,7 @@ const { AppError } = require('../utils/AppError');
 
 exports.createOrder = async (req, res, next) => {
   try {
-    const { firstName, lastName, phone, addressLine1, city, state, postalCode, country } = req.body;
+    const { firstName, lastName, phone, addressLine1, city, state, postalCode, country, couponCode } = req.body;
 
     const cart = await req.prisma.cart.findUnique({
       where: { userId: req.user.id },
@@ -15,9 +15,40 @@ exports.createOrder = async (req, res, next) => {
     }
 
     const subtotal = cart.items.reduce((sum, item) => sum + (parseFloat(item.product.price) * item.quantity), 0);
-    
-    // USE THE CENTRALIZED PRICING LOGIC
-    const pricing = calculateOrderTotals(subtotal);
+
+    let discount = 0;
+    let appliedCouponId = null;
+
+    if (couponCode) {
+      const coupon = await req.prisma.coupon.findUnique({
+        where: { code: couponCode.toUpperCase() }
+      });
+
+      if (coupon && coupon.isActive) {
+        const now = new Date();
+        const start = new Date(coupon.startDate);
+        const end = new Date(coupon.endDate);
+
+        if (now >= start && now <= end) {
+          if (!coupon.usageLimit || coupon.usedCount < coupon.usageLimit) {
+            if (!coupon.minOrderAmount || subtotal >= parseFloat(coupon.minOrderAmount)) {
+              if (coupon.type === 'PERCENTAGE') {
+                discount = (subtotal * parseFloat(coupon.value)) / 100;
+              } else {
+                discount = parseFloat(coupon.value);
+              }
+              if (coupon.maxDiscount && discount > parseFloat(coupon.maxDiscount)) {
+                discount = parseFloat(coupon.maxDiscount);
+              }
+              if (discount > subtotal) discount = subtotal;
+              appliedCouponId = coupon.id;
+            }
+          }
+        }
+      }
+    }
+
+    const pricing = calculateOrderTotals(subtotal, discount);
 
     const address = await req.prisma.address.create({
       data: { userId: req.user.id, firstName, lastName, phone, addressLine1, city, state, postalCode, country, isDefault: false }
@@ -29,12 +60,13 @@ exports.createOrder = async (req, res, next) => {
           orderNumber: 'ORD-' + Date.now(),
           userId: req.user.id,
           addressId: address.id,
+          couponId: appliedCouponId,
           subtotal: pricing.subtotal, 
-          discount: "0.00", 
+          discount: pricing.discount, 
           shippingCost: pricing.shippingCost, 
           tax: pricing.tax, 
           total: pricing.total,
-          status: 'CONFIRMED', // COD is confirmed immediately
+          status: 'CONFIRMED',
           items: {
               create: cart.items.map(item => ({
               productId: item.productId,
@@ -48,9 +80,13 @@ exports.createOrder = async (req, res, next) => {
         }
       });
 
-      // ==========================================
-      // THE "SAME THING" -> DECREMENT INVENTORY
-      // ==========================================
+      if (appliedCouponId) {
+        await tx.coupon.update({
+          where: { id: appliedCouponId },
+          data: { usedCount: { increment: 1 } }
+        });
+      }
+
       for (const item of cart.items) {
         await tx.inventory.update({
           where: { productId: item.productId },
@@ -70,19 +106,20 @@ exports.createOrder = async (req, res, next) => {
 
 exports.getMyOrders = async (req, res, next) => {
   try {
-    // 1. Get page and limit from query, set defaults
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
-    // 2. Run queries in parallel for speed
     const [orders, total] = await Promise.all([
       req.prisma.order.findMany({
         where: { userId: req.user.id },
         orderBy: { createdAt: 'desc' },
         skip,
         take: limit,
-        include: { items: true }
+        include: { 
+          items: true,
+          coupon: { select: { code: true, type: true, value: true } }
+        }
       }),
       req.prisma.order.count({ where: { userId: req.user.id } })
     ]);
@@ -106,7 +143,6 @@ exports.getMyOrders = async (req, res, next) => {
 
 exports.getOrderById = async (req, res, next) => {
   try {
-    // If Admin, let them view ANY order. If User, restrict to their own.
     const whereClause = req.user.role === 'ADMIN' 
       ? { id: req.params.id } 
       : { id: req.params.id, userId: req.user.id };
@@ -116,6 +152,7 @@ exports.getOrderById = async (req, res, next) => {
       include: {
         items: true,
         address: true,
+        coupon: { select: { code: true, type: true, value: true } }
       }
     });
 
