@@ -15,7 +15,6 @@ import {
   EmptyState, SkeletonCard, StatCard, SectionTitle, ComingSoonCard 
 } from '../components/profile/ProfileUI';
 
-// --- PRESERVED PASSWORD LOGIC ---
 const passwordSchema = z.object({
   currentPassword: z.string().min(1, 'Required'),
   newPassword: z.string().min(8, 'Min 8 characters'),
@@ -37,35 +36,22 @@ const sidebarLinks = [
   { id: 'settings', label: 'Settings', icon: Settings },
 ];
 
-// --- HELPER: Extract array from ANY response format ---
 function extractArray(response) {
   if (!response || !response.data) return [];
-  
   const data = response.data;
-  
-  // Case 1: data IS the array directly: [...]
   if (Array.isArray(data)) return data;
-  
-  // Case 2: data.orders = [...]
   if (data.orders && Array.isArray(data.orders)) return data.orders;
-  
-  // Case 3: data.items = [...]
   if (data.items && Array.isArray(data.items)) return data.items;
-  
-  // Case 4: data.data = [...] (double-wrapped)
   if (data.data && Array.isArray(data.data)) return data.data;
-  
-  // Case 5: data.data.orders = [...]
   if (data.data?.orders && Array.isArray(data.data.orders)) return data.data.orders;
-  
   return [];
 }
 
-// --- SIDEBAR COMPONENT ---
 const Sidebar = ({ activeTab, setActiveTab, isMobileMenuOpen, setIsMobileMenuOpen, onLogout }) => (
-  <div className={`lg:block fixed inset-y-0 left-0 z-40 w-72 bg-white dark:bg-gray-900 border-r border-border transform transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-    <div className="p-8 border-b border-border">
+  <div className={`lg:block fixed inset-y-0 left-0 z-50 w-72 bg-white dark:bg-gray-900 border-r border-border transform transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+    <div className="p-8 border-b border-border flex items-center justify-between">
       <h2 className="font-display text-xl font-bold tracking-tight">My Account</h2>
+      <button onClick={() => setIsMobileMenuOpen(false)} className="lg:hidden text-gray-500">✕</button>
     </div>
     <nav className="p-4 space-y-1">
       {sidebarLinks.map((link) => (
@@ -96,7 +82,6 @@ const Sidebar = ({ activeTab, setActiveTab, isMobileMenuOpen, setIsMobileMenuOpe
   </div>
 );
 
-// --- PROFILE HEADER ---
 const ProfileHeader = ({ user, setActiveTab }) => (
   <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-gray-100 via-white to-gray-100 dark:from-gray-800 dark:via-gray-900 dark:to-gray-800 border border-border p-8 mb-8">
     <div className="relative z-10 flex flex-col sm:flex-row items-center gap-6">
@@ -132,7 +117,6 @@ const ProfileHeader = ({ user, setActiveTab }) => (
   </div>
 );
 
-// --- DASHBOARD TAB (Stat cards now clickable!) ---
 const DashboardTab = ({ orders, wishlist, loading, setActiveTab, navigate }) => (
   <div>
     <SectionTitle>Account Overview</SectionTitle>
@@ -156,7 +140,7 @@ const DashboardTab = ({ orders, wishlist, loading, setActiveTab, navigate }) => 
       <div className="space-y-4"><SkeletonCard /><SkeletonCard /></div>
     ) : orders.length > 0 ? (
       <div className="space-y-4">
-          {orders.slice(0, 3).map(order => (
+        {orders.slice(0, 3).map(order => (
           <div 
             key={order.id} 
             onClick={() => navigate(`/orders/${order.id}`)}
@@ -198,8 +182,7 @@ const DashboardTab = ({ orders, wishlist, loading, setActiveTab, navigate }) => 
   </div>
 );
 
-// --- ORDERS TAB ---
-const OrdersTab = ({ orders, loading }) => (
+const OrdersTab = ({ orders, loading, navigate }) => (
   <div>
     <SectionTitle>Order History</SectionTitle>
     {loading ? (
@@ -250,7 +233,6 @@ const OrdersTab = ({ orders, loading }) => (
   </div>
 );
 
-// --- WISHLIST TAB ---
 const WishlistTab = ({ wishlist, loading }) => (
   <div>
     <SectionTitle>My Wishlist ({wishlist.length})</SectionTitle>
@@ -283,7 +265,6 @@ const WishlistTab = ({ wishlist, loading }) => (
   </div>
 );
 
-// --- SETTINGS TAB ---
 const SettingsTab = ({ user }) => {
   const [settingsView, setSettingsView] = useState('info');
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm({ resolver: zodResolver(passwordSchema) });
@@ -347,7 +328,6 @@ const SettingsTab = ({ user }) => {
   );
 };
 
-// --- MAIN PROFILE COMPONENT ---
 export default function Profile() {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
@@ -357,65 +337,45 @@ export default function Profile() {
   const [wishlist, setWishlist] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // ✅ BULLETPROOF DATA FETCHING - Tries multiple endpoints
   useEffect(() => {
     const fetchData = async () => {
-      // Only fetch on these tabs
       if (!['dashboard', 'orders', 'wishlist'].includes(activeTab)) return;
-      
       setLoading(true);
       
-      // =====================================================
-      // FETCH ORDERS — Try /orders/myorders first, then /orders
-      // =====================================================
-            let ordersRes = null;
+      let ordersRes = null;
       try {
-        ordersRes = await api.get('/orders/my-orders'); // Added hyphen
-        console.log('✅ Orders from /orders/my-orders:', ordersRes);
+        ordersRes = await api.get('/orders/my-orders');
       } catch (err1) {
-        console.warn('⚠️ /orders/my-orders failed:', err1.message);
-        // Fallback: try /orders
         try {
-          ordersRes = await api.get('/orders'); 
-          console.log('✅ Orders from /orders:', ordersRes);
+          ordersRes = await api.get('/orders');
         } catch (err2) {
           console.error('❌ Both order endpoints failed:', err2.message);
         }
       }
       
-      // Parse orders from ANY response format
       if (ordersRes) {
         const parsedOrders = extractArray(ordersRes);
-        console.log('📋 Parsed Orders count:', parsedOrders.length);
         setOrders(parsedOrders);
       }
       
-      // =====================================================
-      // FETCH WISHLIST — Try /wishlist, then /user/wishlist
-      // =====================================================
       let wishlistRes = null;
       try {
         wishlistRes = await api.get('/wishlist');
-        console.log('✅ Wishlist from /wishlist:', wishlistRes);
       } catch (err1) {
-        console.warn('⚠️ /wishlist failed:', err1.message);
         try {
           wishlistRes = await api.get('/user/wishlist');
-          console.log('✅ Wishlist from /user/wishlist:', wishlistRes);
         } catch (err2) {
-          console.warn('⚠️ Wishlist endpoint not found (this is OK if you have no wishlist API)');
+          console.warn('⚠️ Wishlist endpoint not found');
         }
       }
       
       if (wishlistRes) {
         const parsedWishlist = extractArray(wishlistRes);
-        console.log('❤️ Parsed Wishlist count:', parsedWishlist.length);
         setWishlist(parsedWishlist);
       }
       
       setLoading(false);
     };
-    
     fetchData();
   }, [activeTab]);
 
@@ -426,17 +386,23 @@ export default function Profile() {
 
   return (
     <div className="min-h-screen bg-gray-50/50 dark:bg-gray-950">
-      {/* Mobile Top Nav */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 z-30 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-border p-4 flex items-center justify-between">
-        <h1 className="font-display text-lg font-bold">{activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}</h1>
-        <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
-        </button>
-      </div>
+      {isMobileMenuOpen && <div onClick={() => setIsMobileMenuOpen(false)} className="lg:hidden fixed inset-0 bg-black/50 z-40" />}
 
-      {isMobileMenuOpen && <div onClick={() => setIsMobileMenuOpen(false)} className="lg:hidden fixed inset-0 bg-black/50 z-30" />}
+      <div className="container-luxe pt-10 lg:pt-14 pb-14">
+        
+        {/* Mobile Inline Header (NO LONGER HIDES BEHIND MAIN HEADER) */}
+        <div className="lg:hidden flex items-center justify-between mb-8">
+          <h1 className="font-display text-2xl font-bold">My Account</h1>
+          <button 
+            onClick={() => setIsMobileMenuOpen(true)} 
+            className="p-3 rounded-lg border border-border hover:bg-surface"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+        </div>
 
-      <div className="container-luxe pt-24 lg:pt-14 pb-14">
         <div className="flex gap-10">
           <Sidebar 
             activeTab={activeTab} 
@@ -467,7 +433,7 @@ export default function Profile() {
                       navigate={navigate}
                     />
                   )}
-                  {activeTab === 'orders' && <OrdersTab orders={orders} loading={loading} />}
+                  {activeTab === 'orders' && <OrdersTab orders={orders} loading={loading} navigate={navigate} />}
                   {activeTab === 'wishlist' && <WishlistTab wishlist={wishlist} loading={loading} />}
                   {activeTab === 'settings' && <SettingsTab user={user} />}
                   
