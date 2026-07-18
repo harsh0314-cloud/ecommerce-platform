@@ -32,6 +32,24 @@ exports.addToCart = async (req, res, next) => {
   try {
     const { productId, quantity = 1 } = req.body;
 
+    if (!productId) {
+      return next(new AppError('Product ID is required', 400));
+    }
+
+    // Validate: Check if product exists
+    const product = await req.prisma.product.findUnique({
+      where: { id: productId }
+    });
+
+    if (!product) {
+      return next(new AppError(`Product not found with ID: ${productId}`, 404));
+    }
+
+    // Check if product is active
+    if (!product.isActive) {
+      return next(new AppError('This product is no longer available', 400));
+    }
+
     let cart = await req.prisma.cart.upsert({
       where: { userId: req.user.id },
       update: {},
@@ -63,6 +81,7 @@ exports.addToCart = async (req, res, next) => {
 
     res.status(200).json({ status: 'success', message: 'Item added to cart' });
   } catch (error) {
+    console.error('Add to cart error:', error);
     next(error);
   }
 };

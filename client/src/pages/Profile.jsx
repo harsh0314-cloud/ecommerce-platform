@@ -417,27 +417,36 @@ export default function Profile() {
   };
 
   const handleMoveToCart = async (item) => {
-    // Get the actual product ID — wishlist item ID is different from product ID
-    const productId = item.id || item.productId || item.product?.id;
+    // The wishlist item from backend has: { id, productId, userId, product: {...} }
+    // We need productId (the actual product ID), NOT item.id (the wishlist record ID)
+    const productId = item.productId || item.product?.id || item.id;
 
     if (!productId) {
       toast.error('Product ID not found');
+      console.error('Wishlist item missing productId:', item);
       return;
     }
 
-    try {
-      const cartStore = (await import('../store/cartStore')).useCartStore.getState();
-      await cartStore.addToCart(productId, 1);
+    console.log('Moving to cart — productId:', productId);
 
-      // Remove from wishlist after adding to cart
+    try {
+      // Directly add to cart via API (not through store to avoid double fetch issues)
+      await api.post('/cart', { productId, quantity: 1 });
+
+      // Remove from wishlist after successful cart add
       await api.delete(`/wishlist/${productId}`);
       setWishlist(prev => prev.filter(w => w.id !== item.id));
+
+      // Refresh cart store
+      const cartStore = (await import('../store/cartStore')).useCartStore.getState();
+      await cartStore.fetchCart();
 
       toast.success('Moved to cart!');
       window.dispatchEvent(new Event('open-cart'));
     } catch (err) {
       console.error('Move to cart failed:', err);
-      toast.error(err.message || 'Failed to move to cart. Please try again.');
+      const msg = err?.message || err?.data?.message || 'Failed to move to cart';
+      toast.error(msg);
     }
   };
 
