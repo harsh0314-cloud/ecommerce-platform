@@ -1,11 +1,12 @@
 import { NavLink, Outlet } from 'react-router-dom';
-import { LayoutDashboard, Package, PlusCircle, Tag, LogOut } from 'lucide-react';
+import { LayoutDashboard, Package, PlusCircle, Tag, Warehouse, LogOut } from 'lucide-react';
 import useAuthStore from '../../store/authStore';
 import { useNavigate } from 'react-router-dom';
 
 const navItems = [
   { to: '/admin', icon: LayoutDashboard, label: 'Overview' },
   { to: '/admin/products', icon: Package, label: 'Products' },
+  { to: '/admin/inventory', icon: Warehouse, label: 'Inventory' },
   { to: '/admin/add-product', icon: PlusCircle, label: 'Add Product' },
   { to: '/admin/coupons', icon: Tag, label: 'Coupons' },
 ];
@@ -21,7 +22,6 @@ export default function AdminLayout() {
 
   return (
     <div className="flex min-h-screen bg-gray-50 dark:bg-gray-900">
-      {/* Sidebar */}
       <aside className="w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col">
         <div className="p-6 border-b border-gray-200 dark:border-gray-700">
           <h1 className="text-xl font-bold text-gray-900 dark:text-white">Admin Panel</h1>
@@ -58,7 +58,6 @@ export default function AdminLayout() {
         </div>
       </aside>
 
-      {/* Main Content Area */}
       <main className="flex-1 p-8 overflow-y-auto">
         <Outlet />
       </main>

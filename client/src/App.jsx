@@ -17,13 +17,14 @@ import ProtectedAdminRoute from './components/ProtectedAdminRoute';
 import AdminLayout from './components/admin/AdminLayout';
 import Dashboard from './pages/admin/Dashboard';
 import ProductList from './pages/admin/ProductList';
+import AdminCoupons from './pages/admin/AdminCoupons';
+import AdminInventory from './pages/admin/AdminInventory';
 import PaymentSuccess from './pages/PaymentSuccess';
 import PaymentCancel from './pages/PaymentCancel';
 import Profile from './pages/Profile';
 import OrderDetails from './pages/OrderDetails';
 import Cart from './pages/Cart';
 import Wishlist from './pages/Wishlist';
-import AdminCoupons from './pages/admin/AdminCoupons';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -68,6 +69,7 @@ function AnimatedRoutes() {
           <Route path="/admin" element={<ProtectedAdminRoute><AdminLayout /></ProtectedAdminRoute>}>
             <Route index element={<Dashboard />} />
             <Route path="products" element={<ProductList />} />
+            <Route path="inventory" element={<AdminInventory />} />
             <Route path="add-product" element={<AddProduct />} />
             <Route path="coupons" element={<AdminCoupons />} />
           </Route>
