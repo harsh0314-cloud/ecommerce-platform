@@ -8,6 +8,11 @@ const readLocal = () => {
   catch { return []; }
 };
 
+const saveLocal = (items) => {
+  localStorage.setItem(KEY, JSON.stringify(items));
+  window.dispatchEvent(new Event('wishlist-updated'));
+};
+
 export default function useWishlist() {
   const [items, setItems] = useState(readLocal);
   const [isLoading, setIsLoading] = useState(false);
@@ -26,34 +31,32 @@ export default function useWishlist() {
   // Load from backend on mount (if logged in)
   useEffect(() => {
     if (!isLoggedIn()) {
-      setItems(readLocal());
-      return;
+      // Avoid synchronous setState during render/effect — schedule for next tick
+      const t = setTimeout(() => setItems(readLocal()), 0);
+      return () => clearTimeout(t);
     }
-
+    
     const fetchWishlist = async () => {
       setIsLoading(true);
       try {
         const res = await api.get('/wishlist');
-        // After interceptor: response.data is the array directly
-        // Before interceptor or if interceptor didn't fire: res.data.data or res.data.items
         const backendItems = Array.isArray(res.data) 
           ? res.data 
           : (res.data?.data || res.data?.items || []);
 
-        // Transform to local format
         const formatted = backendItems.map(item => ({
-          id: item.product?.id || item.productId,
-          name: item.product?.name,
-          slug: item.product?.slug,
-          price: item.product?.price,
-          comparePrice: item.product?.comparePrice,
-          image: item.product?.images?.[0]?.url || item.product?.image,
-          category: item.product?.category?.name,
+          id: item.product?.id || item.productId || item.id,
+          name: item.product?.name || item.name,
+          slug: item.product?.slug || item.slug,
+          price: item.product?.price || item.price,
+          comparePrice: item.product?.comparePrice || item.comparePrice,
+          image: item.product?.images?.[0]?.url || item.image,
+          category: item.product?.category?.name || item.category,
           wishlistId: item.id,
-        })).filter(item => item.id); // Remove any invalid items
+        })).filter(item => item.id);
 
         setItems(formatted);
-        localStorage.setItem(KEY, JSON.stringify(formatted));
+        saveLocal(formatted);
         setIsSynced(true);
       } catch (err) {
         console.warn('Backend wishlist fetch failed, using local:', err.message);
@@ -77,29 +80,34 @@ export default function useWishlist() {
     };
   }, []);
 
-  const persist = (next) => {
-    localStorage.setItem(KEY, JSON.stringify(next));
-    setItems(next);
-    window.dispatchEvent(new Event('wishlist-updated'));
-  };
-
-  const isWishlisted = useCallback((id) => items.some((i) => i.id === id), [items]);
+  const isWishlisted = useCallback((id) => {
+    return items.some((i) => i.id === id);
+  }, [items]);
 
   const toggle = useCallback(async (product) => {
+    // Check against CURRENT state (not re-reading from localStorage)
     const exists = items.some((i) => i.id === product.id);
-    const next = exists 
-      ? items.filter((i) => i.id !== product.id)
-      : [...items, { 
-          id: product.id, 
-          name: product.name, 
-          slug: product.slug, 
-          price: product.price, 
-          comparePrice: product.comparePrice, 
-          image: product.images?.[0]?.url || product.image, 
-          category: product.category?.name || product.category
-        }];
 
-    persist(next);
+    let next;
+    if (exists) {
+      // REMOVE
+      next = items.filter((i) => i.id !== product.id);
+    } else {
+      // ADD
+      next = [...items, { 
+        id: product.id, 
+        name: product.name, 
+        slug: product.slug, 
+        price: product.price, 
+        comparePrice: product.comparePrice, 
+        image: product.images?.[0]?.url || product.image, 
+        category: product.category?.name || product.category
+      }];
+    }
+
+    // Update state immediately
+    setItems(next);
+    saveLocal(next);
 
     // Sync with backend if logged in
     if (isLoggedIn()) {
@@ -111,16 +119,21 @@ export default function useWishlist() {
         }
       } catch (err) {
         console.error('Backend wishlist sync failed:', err.message);
-        // Optionally: revert local state on error
+        // Revert on error
+        setItems(items);
+        saveLocal(items);
+        return exists; // Return original state on error
       }
     }
 
+    // Return true if item was ADDED, false if REMOVED
     return !exists;
   }, [items]);
 
   const remove = useCallback(async (id) => {
     const next = items.filter((i) => i.id !== id);
-    persist(next);
+    setItems(next);
+    saveLocal(next);
 
     // Sync with backend
     if (isLoggedIn()) {
@@ -128,15 +141,17 @@ export default function useWishlist() {
         await api.delete(`/wishlist/${id}`);
       } catch (err) {
         console.error('Backend wishlist remove failed:', err.message);
+        setItems(items);
+        saveLocal(items);
       }
     }
   }, [items]);
 
   const clear = useCallback(() => {
-    persist([]);
+    setItems([]);
+    saveLocal([]);
     if (isLoggedIn()) {
       // Optionally clear all backend wishlist items one by one
-      // Or add a bulk delete endpoint
     }
   }, []);
 
