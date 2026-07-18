@@ -132,7 +132,7 @@ export default function Dashboard() {
                             <tr key={order.id} className="text-sm text-gray-700 dark:text-gray-300">
                               {/* ADDED ONCLICK AND CURSOR-POINTER HERE */}
                               <td 
-                                onClick={() => navigate(`/admin/orders/${order.id}`)} 
+                                onClick={() => navigate(`/orders/${order.id}`)} 
                                 className="py-4 pr-4 font-medium text-blue-600 cursor-pointer hover:underline"
                               >
                                 {order.orderNumber}
@@ -161,7 +161,7 @@ export default function Dashboard() {
                             <div>
                               {/* ADDED ONCLICK AND CURSOR-POINTER HERE */}
                               <p 
-                                onClick={() => navigate(`/admin/orders/${order.id}`)} 
+                                onClick={() => navigate(`/orders/${order.id}`)} 
                                 className="font-bold text-gray-900 dark:text-white cursor-pointer hover:underline"
                               >
                                 {order.orderNumber}
