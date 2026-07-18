@@ -2,7 +2,10 @@ const express = require('express');
 const router = express.Router();
 const { authenticate } = require('../middleware/auth');
 const { requireAdmin } = require('../middleware/rbac');
+
+// Debug: Log what we're importing
 const couponController = require('../controllers/couponController');
+console.log('Coupon Controller exports:', Object.keys(couponController));
 
 // Public route (requires login)
 router.post('/validate', authenticate, couponController.validateCoupon);

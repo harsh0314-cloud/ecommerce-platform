@@ -1,12 +1,10 @@
 const { AppError } = require('../utils/AppError');
 
-// ==========================================
-// PUBLIC: Validate a coupon code
-// ==========================================
+console.log('Loading couponController.js');
+
 exports.validateCoupon = async (req, res, next) => {
   try {
     const { code, subtotal } = req.body;
-
     if (!code) return next(new AppError('Coupon code is required', 400));
 
     const coupon = await req.prisma.coupon.findUnique({
@@ -32,7 +30,6 @@ exports.validateCoupon = async (req, res, next) => {
     if (coupon.maxDiscount && discountAmount > parseFloat(coupon.maxDiscount)) {
       discountAmount = parseFloat(coupon.maxDiscount);
     }
-
     if (discountAmount > parseFloat(subtotal)) {
       discountAmount = parseFloat(subtotal);
     }
@@ -53,9 +50,6 @@ exports.validateCoupon = async (req, res, next) => {
   }
 };
 
-// ==========================================
-// ADMIN: Get all coupons
-// ==========================================
 exports.getAllCoupons = async (req, res, next) => {
   try {
     const coupons = await req.prisma.coupon.findMany({
@@ -67,9 +61,6 @@ exports.getAllCoupons = async (req, res, next) => {
   }
 };
 
-// ==========================================
-// ADMIN: Create a new coupon
-// ==========================================
 exports.createCoupon = async (req, res, next) => {
   try {
     const { code, type, value, minOrderAmount, maxDiscount, usageLimit, startDate, endDate } = req.body;
@@ -105,9 +96,6 @@ exports.createCoupon = async (req, res, next) => {
   }
 };
 
-// ==========================================
-// ADMIN: Update a coupon
-// ==========================================
 exports.updateCoupon = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -138,9 +126,6 @@ exports.updateCoupon = async (req, res, next) => {
   }
 };
 
-// ==========================================
-// ADMIN: Delete a coupon
-// ==========================================
 exports.deleteCoupon = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -154,9 +139,6 @@ exports.deleteCoupon = async (req, res, next) => {
   }
 };
 
-// ==========================================
-// ADMIN: Toggle coupon active status
-// ==========================================
 exports.toggleCoupon = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -178,3 +160,5 @@ exports.toggleCoupon = async (req, res, next) => {
     next(error);
   }
 };
+
+console.log('couponController exports:', Object.keys(exports));
