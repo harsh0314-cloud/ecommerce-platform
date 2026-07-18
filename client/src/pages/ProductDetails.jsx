@@ -1,277 +1,179 @@
-import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, ShoppingBag, Heart, Truck, RotateCcw, Plus, Minus, Star, ChevronDown } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-import toast from 'react-hot-toast';
+import { useState, useEffect, Suspense, lazy } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { ShoppingCart, Heart, ArrowLeft, Truck, RotateCcw, ShieldCheck } from 'lucide-react';
 import api from '../services/api';
+import toast from 'react-hot-toast';
+import SEO from '../components/SEO';
 import { useCartStore } from '../store/cartStore';
 import useWishlist from '../hooks/useWishlist';
-import ProductCard, { fmtPrice } from '../components/ProductCard';
-import { getRecentlyViewed, pushRecentlyViewed } from '../hooks/useRecentlyViewed';
+import { fmtPrice } from '../components/ProductCard';
 
-const ease = [0.22, 1, 0.36, 1];
-
-function Accordion({ title, children, defaultOpen = false, testid }) {
-  const [open, setOpen] = useState(defaultOpen);
-  return (
-    <div className="border-b border-border">
-      <button onClick={() => setOpen(!open)} data-testid={testid} className="flex w-full items-center justify-between py-5 text-left">
-        <span className="font-display text-sm font-bold uppercase tracking-luxe-sm">{title}</span>
-        <ChevronDown size={18} className={`transition-transform duration-300 ${open ? 'rotate-180' : ''}`} />
-      </button>
-      <AnimatePresence initial={false}>
-        {open && (
-          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.4, ease }} className="overflow-hidden">
-            <div className="pb-6 text-sm font-light leading-relaxed text-muted-foreground">{children}</div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
+const ProductCard = lazy(() => import('../components/ProductCard'));
 
 export default function ProductDetails() {
   const { slug } = useParams();
-  const [product, setProduct] = useState(null);
-  const [selectedImage, setSelectedImage] = useState(0);
-  const [selectedSize, setSelectedSize] = useState(null);
-  const [selectedColor, setSelectedColor] = useState(null);
-  const [qty, setQty] = useState(1);
-  const [loading, setLoading] = useState(true);
-  const [related, setRelated] = useState([]);
-  const [recent, setRecent] = useState([]);
-  const [adding, setAdding] = useState(false);
-
+  const navigate = useNavigate();
   const addToCart = useCartStore((s) => s.addToCart);
   const { isWishlisted, toggle } = useWishlist();
 
+  const [product, setProduct] = useState(null);
+  const [related, setRelated] = useState([]);
+  const [selectedImage, setSelectedImage] = useState(0);
+  const [quantity, setQuantity] = useState(1);
+  const [adding, setAdding] = useState(false);
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
-    if (!slug) return;
-    let mounted = true;
     setLoading(true);
-    setRecent(getRecentlyViewed());
     api.get(`/products/${slug}`)
       .then((res) => {
-        if (!mounted) return;
-        const prod = res.data?.product;
-        if (!prod) throw new Error('not found');
-        setProduct(prod);
-        setSelectedImage(0);
-        setQty(1);
-        const sizeV = prod.variants?.find((v) => v.name?.toLowerCase() === 'size');
-        const colorV = prod.variants?.find((v) => v.name?.toLowerCase() === 'color');
-        setSelectedSize(sizeV?.value ?? null);
-        setSelectedColor(colorV?.value ?? null);
-        pushRecentlyViewed(prod);
+        const p = res.data?.product || res.data?.data?.product;
+        setProduct(p);
+        if (p?.category?.id) {
+          api.get(`/products?category=${p.category.id}&limit=4`)
+            .then((r) => setRelated((r.data?.products || []).filter((x) => x.id !== p.id)));
+        }
       })
-      .catch(() => { if (mounted) { setProduct(null); toast.error('Product not found'); } })
-      .finally(() => { if (mounted) setLoading(false); });
-
-    api.get('/products', { params: { limit: 4 } }).then((res) => mounted && setRelated(res.data.products || [])).catch(() => {});
-    return () => { mounted = false; };
+      .catch(() => toast.error('Product not found'))
+      .finally(() => setLoading(false));
   }, [slug]);
 
   if (loading) {
     return (
-      <div className="container-luxe grid gap-12 py-12 md:grid-cols-2">
-        <div className="aspect-[4/5] animate-pulse bg-surface" />
-        <div className="space-y-4"><div className="h-10 w-2/3 animate-pulse bg-surface" /><div className="h-6 w-1/3 animate-pulse bg-surface" /><div className="h-40 w-full animate-pulse bg-surface" /></div>
+      <div className="container-luxe py-24">
+        <div className="grid gap-12 lg:grid-cols-2">
+          <div className="aspect-square bg-gray-100 animate-pulse rounded-xl" />
+          <div className="space-y-4">
+            <div className="h-8 bg-gray-100 animate-pulse rounded w-3/4" />
+            <div className="h-6 bg-gray-100 animate-pulse rounded w-1/4" />
+            <div className="h-4 bg-gray-100 animate-pulse rounded w-full" />
+            <div className="h-4 bg-gray-100 animate-pulse rounded w-full" />
+            <div className="h-12 bg-gray-100 animate-pulse rounded w-1/2 mt-8" />
+          </div>
+        </div>
       </div>
     );
   }
-  if (!product) return <div className="py-32 text-center text-muted-foreground">Product not found</div>;
 
-  const images = Array.isArray(product.images) ? product.images : [];
-  const activeImage = images[selectedImage] || images[0];
-  const sizeVariants = product.variants?.filter((v) => v.name?.toLowerCase() === 'size') ?? [];
-  const colorVariants = product.variants?.filter((v) => v.name?.toLowerCase() === 'color') ?? [];
-  const reviews = product.reviews || [];
-  const qtyStock = product.inventory?.quantity;
-  const lowStock = typeof qtyStock === 'number' && qtyStock <= 5 && qtyStock > 0;
-  const outOfStock = typeof qtyStock === 'number' && qtyStock <= 0;
-  const onSale = product.comparePrice && Number(product.comparePrice) > Number(product.price);
+  if (!product) return null;
+
   const wished = isWishlisted(product.id);
-  const disabled = outOfStock || (sizeVariants.length > 0 && !selectedSize);
-  const avgRating = reviews.length ? (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1) : null;
+  const onSale = product.comparePrice && Number(product.comparePrice) > Number(product.price);
+  const discount = onSale ? Math.round((1 - Number(product.price) / Number(product.comparePrice)) * 100) : 0;
 
   const handleAdd = async () => {
     setAdding(true);
     try {
-      await addToCart(product.id, qty);
+      await addToCart(product.id, quantity);
       window.dispatchEvent(new Event('open-cart'));
-      toast.success('Added to bag');
-    } catch { toast.error('Please sign in to add items'); }
-    finally { setAdding(false); }
+      toast.success(`${product.name} added to bag`);
+    } catch {
+      toast.error('Please sign in to add items');
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  const handleWish = async () => {
+    const added = await toggle(product);
+    toast(added ? 'Saved to wishlist' : 'Removed from wishlist', { icon: added ? '♥' : '♡' });
   };
 
   return (
-    <div className="bg-background">
-      <div className="container-luxe pt-8">
-        <Link to="/products" data-testid="back-to-products" className="link-underline inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-luxe-sm text-muted-foreground">
-          <ArrowLeft size={15} /> Back to Collection
-        </Link>
-      </div>
+    <>
+      <SEO 
+        title={`${product.name} — StoreX`}
+        description={product.description?.substring(0, 160) || `Shop ${product.name} at StoreX. Premium quality, designed in-house.`}
+        keywords={`${product.name}, ${product.category?.name}, luxury clothing, StoreX`}
+        image={product.images?.[0]?.url}
+        url={`https://storex-frontend-gold.vercel.app/products/${slug}`}
+      />
 
-      <div className="container-luxe grid grid-cols-1 gap-12 py-10 md:grid-cols-2 md:gap-16 lg:gap-24">
-        {/* Gallery */}
-        <div className="flex flex-col-reverse gap-4 md:flex-row">
-          <div className="flex gap-3 md:flex-col">
-            {images.map((img, i) => (
-              <button key={img.id ?? i} onClick={() => setSelectedImage(i)} data-testid={`thumb-${i}`} className={`h-20 w-16 shrink-0 overflow-hidden bg-surface transition-all ${selectedImage === i ? 'ring-1 ring-foreground ring-offset-2' : 'opacity-60 hover:opacity-100'}`}>
-                <img src={img.url} alt="" className="h-full w-full object-cover" />
-              </button>
-            ))}
-          </div>
-          <div className="relative aspect-[4/5] flex-1 overflow-hidden bg-surface">
-            <AnimatePresence mode="wait">
-              <motion.img
-                key={activeImage?.url ?? selectedImage}
-                src={activeImage?.url}
-                alt={product.name}
-                initial={{ opacity: 0, scale: 1.05 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.5, ease }}
-                className="absolute inset-0 h-full w-full object-cover object-center"
-              />
-            </AnimatePresence>
-            {onSale && <span className="absolute left-4 top-4 bg-sale-red px-3 py-1 text-[10px] font-semibold uppercase tracking-luxe-sm text-white">Sale</span>}
-          </div>
-        </div>
+      <div className="container-luxe py-14">
+        <button onClick={() => navigate(-1)} className="mb-8 flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+          <ArrowLeft size={16} /> Back
+        </button>
 
-        {/* Info */}
-        <div className="md:sticky md:top-28 md:h-fit">
-          <p className="overline text-muted-foreground">{product.category?.name}{product.brand?.name ? ` · ${product.brand.name}` : ''}</p>
-          <h1 className="mt-3 font-display text-4xl font-bold leading-tight tracking-tight sm:text-5xl">{product.name}</h1>
-
-          <div className="mt-5 flex items-center gap-4">
-            <span className="font-display text-2xl font-semibold">{fmtPrice(product.price)}</span>
-            {onSale && <span className="text-lg text-muted-foreground line-through">{fmtPrice(product.comparePrice)}</span>}
-            {avgRating && (
-              <span className="ml-auto flex items-center gap-1 text-sm text-muted-foreground">
-                <Star size={15} className="fill-gold text-gold" /> {avgRating} ({reviews.length})
-              </span>
+        <div className="grid gap-12 lg:grid-cols-2">
+          {/* Images */}
+          <div className="space-y-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="relative aspect-square overflow-hidden rounded-xl bg-gray-100">
+              <img src={product.images?.[selectedImage]?.url} alt={product.name} className="h-full w-full object-cover" loading="eager" />
+              {onSale && <span className="absolute left-4 top-4 bg-sale-red px-3 py-1 text-[10px] font-semibold uppercase tracking-luxe-sm text-white">-{discount}%</span>}
+            </motion.div>
+            {product.images?.length > 1 && (
+              <div className="flex gap-3">
+                {product.images.map((img, i) => (
+                  <button key={i} onClick={() => setSelectedImage(i)} className={`h-20 w-20 overflow-hidden rounded-lg border-2 transition-colors ${selectedImage === i ? 'border-foreground' : 'border-transparent'}`}>
+                    <img src={img.url} alt="" className="h-full w-full object-cover" loading="lazy" />
+                  </button>
+                ))}
+              </div>
             )}
           </div>
 
-          {product.shortDescription && <p className="mt-6 max-w-md text-sm font-light leading-relaxed text-muted-foreground">{product.shortDescription}</p>}
+          {/* Info */}
+          <div>
+            <p className="overline text-muted-foreground">{product.category?.name}</p>
+            <h1 className="mt-2 font-display text-3xl font-bold tracking-tight md:text-4xl">{product.name}</h1>
+            <div className="mt-4 flex items-baseline gap-3">
+              <span className="font-display text-2xl font-semibold">{fmtPrice(product.price)}</span>
+              {onSale && <span className="text-lg text-muted-foreground line-through">{fmtPrice(product.comparePrice)}</span>}
+            </div>
+            <p className="mt-6 leading-relaxed text-muted-foreground">{product.description}</p>
 
-          {/* Colors */}
-          {colorVariants.length > 0 && (
-            <div className="mt-8">
-              <p className="overline mb-3 text-foreground">Colour — {selectedColor}</p>
-              <div className="flex gap-3">
-                {colorVariants.map((c) => (
-                  <button key={c.id} onClick={() => setSelectedColor(c.value)} data-testid={`color-${c.value}`} title={c.value}
-                    className={`h-9 rounded-full px-4 text-[11px] font-semibold uppercase tracking-luxe-sm transition-all ${selectedColor === c.value ? 'bg-foreground text-white' : 'border border-border text-muted-foreground hover:border-foreground'}`}>
-                    {c.value}
-                  </button>
-                ))}
+            {/* Quantity */}
+            <div className="mt-8 flex items-center gap-4">
+              <span className="text-sm font-medium">Quantity</span>
+              <div className="flex items-center border border-border">
+                <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="px-4 py-2 text-sm hover:bg-surface">-</button>
+                <span className="w-12 text-center text-sm font-semibold">{quantity}</span>
+                <button onClick={() => setQuantity(quantity + 1)} className="px-4 py-2 text-sm hover:bg-surface">+</button>
               </div>
             </div>
-          )}
 
-          {/* Sizes */}
-          {sizeVariants.length > 0 && (
-            <div className="mt-8">
-              <div className="mb-3 flex items-center justify-between">
-                <p className="overline text-foreground">Size</p>
-                <span className="text-[11px] uppercase tracking-luxe-sm text-muted-foreground">Size Guide</span>
-              </div>
-              <div className="flex flex-wrap gap-3">
-                {sizeVariants.map((v) => (
-                  <button key={v.id} onClick={() => setSelectedSize(v.value)} data-testid={`size-${v.value}`}
-                    className={`flex h-12 min-w-[3rem] items-center justify-center border px-3 text-sm font-semibold transition-all ${selectedSize === v.value ? 'border-foreground bg-foreground text-white' : 'border-border hover:border-foreground'}`}>
-                    {v.value}
-                  </button>
-                ))}
-              </div>
+            {/* Actions */}
+            <div className="mt-8 flex gap-4">
+              <button onClick={handleAdd} disabled={adding} className="flex-1 bg-foreground py-4 text-[11px] font-semibold uppercase tracking-luxe-sm text-white transition-opacity hover:opacity-90 disabled:opacity-50">
+                {adding ? 'Adding...' : 'Add to Bag'}
+              </button>
+              <button onClick={handleWish} className="flex h-[52px] w-[52px] items-center justify-center border border-border transition-colors hover:bg-surface">
+                <Heart size={20} className={wished ? 'fill-red-500 text-red-500' : ''} />
+              </button>
             </div>
-          )}
 
-          {/* Qty + actions */}
-          <div className="mt-8 flex items-stretch gap-4">
-            <div className="flex items-center border border-border">
-              <button onClick={() => setQty(Math.max(1, qty - 1))} data-testid="qty-minus" className="px-4 py-4 disabled:opacity-30" disabled={qty <= 1}><Minus size={15} /></button>
-              <span className="w-10 text-center text-sm font-semibold">{qty}</span>
-              <button onClick={() => setQty(qty + 1)} data-testid="qty-plus" className="px-4 py-4"><Plus size={15} /></button>
+            {/* Trust */}
+            <div className="mt-8 grid grid-cols-3 gap-4 border-t border-border pt-8">
+              {[
+                { icon: Truck, label: 'Free Shipping', desc: 'Over ₹500' },
+                { icon: RotateCcw, label: 'Easy Returns', desc: '30 days' },
+                { icon: ShieldCheck, label: 'Secure', desc: 'SSL Checkout' },
+              ].map((item) => (
+                <div key={item.label} className="text-center">
+                  <item.icon size={20} className="mx-auto mb-2 text-muted-foreground" />
+                  <p className="text-xs font-semibold">{item.label}</p>
+                  <p className="text-[10px] text-muted-foreground">{item.desc}</p>
+                </div>
+              ))}
             </div>
-            <button onClick={handleAdd} disabled={disabled || adding} data-testid="add-to-cart-button"
-              className="flex flex-1 items-center justify-center gap-2 bg-foreground text-[12px] font-semibold uppercase tracking-luxe-sm text-white transition-colors hover:bg-gold disabled:cursor-not-allowed disabled:opacity-50">
-              <ShoppingBag size={17} /> {outOfStock ? 'Out of Stock' : adding ? 'Adding…' : 'Add to Bag'}
-            </button>
-            <button onClick={() => { const a = toggle(product); toast(a ? 'Saved to wishlist' : 'Removed'); }} data-testid="wishlist-detail" className="flex w-14 items-center justify-center border border-border transition-colors hover:border-foreground">
-              <Heart size={18} className={wished ? 'fill-foreground text-foreground' : ''} />
-            </button>
-          </div>
-
-          {lowStock && <p className="mt-4 text-xs font-semibold uppercase tracking-luxe-sm text-sale-red">Only {qtyStock} left — almost gone</p>}
-
-          {/* Delivery */}
-          <div className="mt-8 grid grid-cols-2 gap-3">
-            <div className="flex items-center gap-3 bg-surface p-4"><Truck size={20} strokeWidth={1.4} /><div><p className="text-xs font-semibold">Free Shipping</p><p className="text-xs text-muted-foreground">3–5 business days</p></div></div>
-            <div className="flex items-center gap-3 bg-surface p-4"><RotateCcw size={20} strokeWidth={1.4} /><div><p className="text-xs font-semibold">Free Returns</p><p className="text-xs text-muted-foreground">Within 30 days</p></div></div>
-          </div>
-
-          {/* Accordions */}
-          <div className="mt-10">
-            <Accordion title="Details" defaultOpen testid="acc-details">
-              <p className="whitespace-pre-wrap">{product.description || 'No description available.'}</p>
-            </Accordion>
-            <Accordion title="Delivery & Returns" testid="acc-delivery">
-              Complimentary shipping on orders over $50. Standard delivery in 3–5 business days. Enjoy free returns within 30 days of receipt — items must be unworn with tags attached.
-            </Accordion>
-            <Accordion title="Materials & Care" testid="acc-care">
-              Crafted from premium, responsibly-sourced fabrics. Machine wash cold on a gentle cycle, wash inside out, and lay flat to dry to preserve shape and finish.
-            </Accordion>
           </div>
         </div>
-      </div>
 
-      {/* Reviews */}
-      <section className="container-luxe border-t border-border py-16">
-        <h2 className="font-display text-3xl font-bold tracking-tight">Reviews {reviews.length > 0 && <span className="text-muted-foreground">({reviews.length})</span>}</h2>
-        {reviews.length === 0 ? (
-          <p className="mt-4 text-muted-foreground">No reviews yet — be the first to share your thoughts.</p>
-        ) : (
-          <div className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {reviews.map((r) => (
-              <div key={r.id} className="border border-border p-6">
-                <div className="flex items-center gap-1">{[...Array(5)].map((_, i) => <Star key={i} size={14} className={i < r.rating ? 'fill-gold text-gold' : 'text-border'} />)}</div>
-                {r.title && <h4 className="mt-3 font-display text-sm font-bold">{r.title}</h4>}
-                <p className="mt-2 text-sm font-light leading-relaxed text-muted-foreground">{r.comment}</p>
-                <p className="mt-4 text-xs uppercase tracking-luxe-sm text-muted-foreground">{r.user?.firstName} {r.user?.lastName?.[0]}.</p>
-              </div>
-            ))}
+        {/* Related */}
+        {related.length > 0 && (
+          <div className="mt-24">
+            <h2 className="font-display text-2xl font-bold tracking-tight">You May Also Like</h2>
+            <div className="mt-8 grid grid-cols-2 gap-6 md:grid-cols-4">
+              <Suspense fallback={<div className="aspect-[4/5] bg-gray-100 animate-pulse rounded-lg" />}>
+                {related.map((p, i) => (
+                  <ProductCard key={p.id} product={p} index={i} />
+                ))}
+              </Suspense>
+            </div>
           </div>
         )}
-      </section>
-
-      {/* Related */}
-      {related.length > 0 && (
-        <section className="container-luxe border-t border-border py-16">
-          <h2 className="mb-10 font-display text-3xl font-bold tracking-tight">You May Also Like</h2>
-          <div className="grid grid-cols-2 gap-x-5 gap-y-12 lg:grid-cols-4">
-            {related.filter((p) => p.id !== product.id).slice(0, 4).map((p, i) => <ProductCard key={p.id} product={p} index={i} />)}
-          </div>
-        </section>
-      )}
-
-      {/* Recently viewed */}
-      {recent.filter((p) => p.slug !== slug).length > 0 && (
-        <section className="container-luxe border-t border-border py-16">
-          <h2 className="mb-10 font-display text-2xl font-bold tracking-tight">Recently Viewed</h2>
-          <div className="grid grid-cols-2 gap-x-5 gap-y-10 lg:grid-cols-4">
-            {recent.filter((p) => p.slug !== slug).slice(0, 4).map((p) => (
-              <Link key={p.id} to={`/products/${p.slug}`} className="group block">
-                <div className="aspect-[4/5] overflow-hidden bg-surface"><img src={p.images?.[0]?.url} alt={p.name} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" /></div>
-                <p className="mt-3 truncate font-display text-sm font-semibold">{p.name}</p>
-                <p className="text-sm text-muted-foreground">{fmtPrice(p.price)}</p>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
-    </div>
+      </div>
+    </>
   );
 }

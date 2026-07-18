@@ -5,6 +5,19 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5174,
-    proxy: { '/api': 'http://localhost:5000' },  // proxy API to your Express server
+    proxy: { '/api': 'http://localhost:5000' },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor': ['react', 'react-dom', 'react-router-dom'],
+          'ui': ['framer-motion', 'lucide-react'],
+          'state': ['zustand'],
+          'forms': ['react-hook-form', '@hookform/resolvers', 'zod'],
+        }
+      }
+    },
+    chunkSizeWarningLimit: 500,
+  }
 })
