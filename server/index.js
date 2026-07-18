@@ -18,6 +18,7 @@ const cartRoutes = require('./src/routes/cartRoutes');
 const orderRoutes = require('./src/routes/orderRoutes');
 const paymentRoutes = require('./src/routes/paymentRoutes');
 const userRoutes = require('./src/routes/userRoutes');
+const wishlistRoutes = require('./src/routes/wishlistRoutes');
 
 const app = express();
 const prisma = new PrismaClient();
@@ -110,6 +111,7 @@ app.use('/api/cart', cartRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/wishlist', wishlistRoutes);
 
 // 404 Handler
 app.use('*', (req, res) => {
