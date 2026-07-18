@@ -31,11 +31,10 @@ export default function useWishlist() {
   // Load from backend on mount (if logged in)
   useEffect(() => {
     if (!isLoggedIn()) {
-      // Avoid synchronous setState during render/effect — schedule for next tick
-      const t = setTimeout(() => setItems(readLocal()), 0);
-      return () => clearTimeout(t);
+      setItems(readLocal());
+      return;
     }
-    
+
     const fetchWishlist = async () => {
       setIsLoading(true);
       try {
