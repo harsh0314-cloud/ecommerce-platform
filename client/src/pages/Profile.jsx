@@ -243,11 +243,16 @@ const WishlistTab = ({ wishlist, loading }) => (
         {wishlist.map(item => (
           <motion.div key={item.id} whileHover={{ y: -5 }} className="group border border-border rounded-xl overflow-hidden bg-white dark:bg-gray-800 hover:shadow-lg transition-all duration-300">
             <div className="relative aspect-square overflow-hidden bg-gray-100 dark:bg-gray-700">
-              <img src={item.product?.image || item.image || 'https://via.placeholder.com/200'} alt={item.product?.name || item.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+              {/* FIXED IMAGE PATH: item.product.images[0].url */}
+              <img 
+                src={item.product?.images?.[0]?.url || item.product?.image || 'https://via.placeholder.com/200'} 
+                alt={item.product?.name || item.name} 
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+              />
             </div>
             <div className="p-4">
               <h3 className="text-sm font-medium text-gray-900 dark:text-white truncate">{item.product?.name || item.name}</h3>
-              <p className="text-lg font-display font-bold mt-2">₹{parseFloat(item.product?.price || item.price || 0).toFixed(2)}</p>
+              <p className="text-lg font-display font-bold mt-2">₹{parseFloat(item.product?.price || 0).toFixed(2)}</p>
               <button className="w-full mt-3 border border-foreground py-2 text-[11px] font-semibold uppercase tracking-luxe-sm hover:bg-foreground hover:text-white transition-colors">Move to Cart</button>
             </div>
           </motion.div>
@@ -358,19 +363,22 @@ export default function Profile() {
         setOrders(parsedOrders);
       }
       
-      let wishlistRes = null;
+            let wishlistRes = null;
       try {
         wishlistRes = await api.get('/wishlist');
+        console.log('❤️ Raw Wishlist Response:', wishlistRes);
       } catch (err1) {
-        try {
-          wishlistRes = await api.get('/user/wishlist');
-        } catch (err2) {
-          console.warn('⚠️ Wishlist endpoint not found');
-        }
+        console.warn('⚠️ Wishlist endpoint not found');
       }
       
       if (wishlistRes) {
-        const parsedWishlist = extractArray(wishlistRes);
+        let parsedWishlist = [];
+        // Handle your exact backend format: { status: 'success', items: [...] }
+        if (wishlistRes.data?.items && Array.isArray(wishlistRes.data.items)) {
+          parsedWishlist = wishlistRes.data.items;
+        } else if (Array.isArray(wishlistRes.data)) {
+          parsedWishlist = wishlistRes.data;
+        }
         setWishlist(parsedWishlist);
       }
       
