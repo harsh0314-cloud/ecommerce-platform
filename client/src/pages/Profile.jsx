@@ -10,6 +10,7 @@ import {
   ShoppingCart, Trash2
 } from 'lucide-react';
 import useAuthStore from '../store/authStore';
+import { useCartStore } from '../store/cartStore';
 import api from '../services/api';
 import toast from 'react-hot-toast';
 import { 
@@ -40,9 +41,7 @@ const sidebarLinks = [
 function extractArray(response) {
   if (!response || !response.data) return [];
   const data = response.data;
-  // After interceptor: data might be the array directly
   if (Array.isArray(data)) return data;
-  // Before interceptor or nested formats
   if (data.data && Array.isArray(data.data)) return data.data;
   if (data.items && Array.isArray(data.items)) return data.items;
   if (data.orders && Array.isArray(data.orders)) return data.orders;
@@ -255,7 +254,6 @@ const WishlistTab = ({ wishlist, loading, onRemove, onMoveToCart }) => (
                 alt={item.name || item.product?.name} 
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
               />
-              {/* Remove button */}
               <button
                 onClick={(e) => { e.stopPropagation(); onRemove(item.id); }}
                 className="absolute top-2 right-2 p-2 bg-white/90 dark:bg-black/70 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50 hover:text-red-500"
@@ -418,10 +416,29 @@ export default function Profile() {
     }
   };
 
-  const handleMoveToCart = (item) => {
-    // Navigate to product page or add directly to cart
-    navigate(`/products/${item.slug || item.id}`);
-    toast.success('Navigate to product to add to cart');
+  const handleMoveToCart = async (item) => {
+    // Get the actual product ID — wishlist item ID is different from product ID
+    const productId = item.id || item.productId || item.product?.id;
+
+    if (!productId) {
+      toast.error('Product ID not found');
+      return;
+    }
+
+    try {
+      const cartStore = (await import('../store/cartStore')).useCartStore.getState();
+      await cartStore.addToCart(productId, 1);
+
+      // Remove from wishlist after adding to cart
+      await api.delete(`/wishlist/${productId}`);
+      setWishlist(prev => prev.filter(w => w.id !== item.id));
+
+      toast.success('Moved to cart!');
+      window.dispatchEvent(new Event('open-cart'));
+    } catch (err) {
+      console.error('Move to cart failed:', err);
+      toast.error(err.message || 'Failed to move to cart. Please try again.');
+    }
   };
 
   return (
