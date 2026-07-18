@@ -106,8 +106,13 @@ exports.getMyOrders = async (req, res, next) => {
 
 exports.getOrderById = async (req, res, next) => {
   try {
+    // If Admin, let them view ANY order. If User, restrict to their own.
+    const whereClause = req.user.role === 'ADMIN' 
+      ? { id: req.params.id } 
+      : { id: req.params.id, userId: req.user.id };
+
     const order = await req.prisma.order.findUnique({
-      where: { id: req.params.id, userId: req.user.id }, // Ensure it belongs to user
+      where: whereClause,
       include: {
         items: true,
         address: true,
