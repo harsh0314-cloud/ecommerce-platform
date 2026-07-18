@@ -49,6 +49,22 @@ function extractArray(response) {
   return [];
 }
 
+// Helper: Update localStorage wishlist and dispatch event for Header sync
+const syncLocalWishlist = (wishlistItems) => {
+  const formatted = wishlistItems.map(item => ({
+    id: item.product?.id || item.productId || item.id,
+    name: item.product?.name || item.name,
+    slug: item.product?.slug || item.slug,
+    price: item.product?.price || item.price,
+    comparePrice: item.product?.comparePrice || item.comparePrice,
+    image: item.product?.images?.[0]?.url || item.image,
+    category: item.product?.category?.name || item.category,
+  })).filter(i => i.id);
+
+  localStorage.setItem('storex-wishlist', JSON.stringify(formatted));
+  window.dispatchEvent(new Event('wishlist-updated'));
+};
+
 const Sidebar = ({ activeTab, setActiveTab, isMobileMenuOpen, setIsMobileMenuOpen, onLogout }) => (
   <div className={`lg:block fixed inset-y-0 left-0 z-50 w-72 bg-white dark:bg-gray-900 border-r border-border transform transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
     <div className="p-8 border-b border-border flex items-center justify-between">
@@ -250,21 +266,21 @@ const WishlistTab = ({ wishlist, loading, onRemove, onMoveToCart }) => (
           >
             <div className="relative aspect-square overflow-hidden bg-gray-100 dark:bg-gray-700">
               <img 
-                src={item.image || item.product?.images?.[0]?.url || item.product?.image || 'https://via.placeholder.com/200'} 
-                alt={item.name || item.product?.name} 
+                src={item.product?.images?.[0]?.url || item.product?.image || item.image || 'https://via.placeholder.com/200'} 
+                alt={item.product?.name || item.name} 
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
               />
               <button
-                onClick={(e) => { e.stopPropagation(); onRemove(item.id); }}
+                onClick={(e) => { e.stopPropagation(); onRemove(item); }}
                 className="absolute top-2 right-2 p-2 bg-white/90 dark:bg-black/70 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50 hover:text-red-500"
               >
                 <Trash2 size={14} />
               </button>
             </div>
             <div className="p-4">
-              <h3 className="text-sm font-medium text-gray-900 dark:text-white truncate">{item.name || item.product?.name}</h3>
+              <h3 className="text-sm font-medium text-gray-900 dark:text-white truncate">{item.product?.name || item.name}</h3>
               <p className="text-lg font-display font-bold mt-2">
-                ₹{parseFloat(item.price || item.product?.price || 0).toFixed(2)}
+                ₹{parseFloat(item.product?.price || item.price || 0).toFixed(2)}
               </p>
               <button 
                 onClick={() => onMoveToCart(item)}
@@ -394,6 +410,8 @@ export default function Profile() {
         const parsedWishlist = extractArray(wishlistRes);
         console.log('✅ Parsed Wishlist:', parsedWishlist);
         setWishlist(parsedWishlist);
+        // Sync with localStorage so Header shows correct count
+        syncLocalWishlist(parsedWishlist);
       }
 
       setLoading(false);
@@ -406,38 +424,43 @@ export default function Profile() {
     navigate('/');
   };
 
-  const handleRemoveFromWishlist = async (productId) => {
+  const handleRemoveFromWishlist = async (item) => {
+    const productId = item.productId || item.product?.id || item.id;
+
     try {
+      // Remove from backend
       await api.delete(`/wishlist/${productId}`);
-      setWishlist(prev => prev.filter(item => item.id !== productId));
+
+      // Update local state
+      const updated = wishlist.filter(w => w.id !== item.id);
+      setWishlist(updated);
+
+      // Sync localStorage + dispatch event so Header updates
+      syncLocalWishlist(updated);
+
       toast.success('Removed from wishlist');
     } catch (err) {
+      console.error('Remove failed:', err);
       toast.error('Failed to remove item');
     }
   };
 
   const handleMoveToCart = async (item) => {
-    // The wishlist item from backend has: { id, productId, userId, product: {...} }
-    // We need productId (the actual product ID), NOT item.id (the wishlist record ID)
     const productId = item.productId || item.product?.id || item.id;
 
     if (!productId) {
       toast.error('Product ID not found');
-      console.error('Wishlist item missing productId:', item);
       return;
     }
 
-    console.log('Moving to cart — productId:', productId);
-
     try {
-      // Directly add to cart via API (not through store to avoid double fetch issues)
       await api.post('/cart', { productId, quantity: 1 });
-
-      // Remove from wishlist after successful cart add
       await api.delete(`/wishlist/${productId}`);
-      setWishlist(prev => prev.filter(w => w.id !== item.id));
 
-      // Refresh cart store
+      const updated = wishlist.filter(w => w.id !== item.id);
+      setWishlist(updated);
+      syncLocalWishlist(updated);
+
       const cartStore = (await import('../store/cartStore')).useCartStore.getState();
       await cartStore.fetchCart();
 
@@ -445,8 +468,7 @@ export default function Profile() {
       window.dispatchEvent(new Event('open-cart'));
     } catch (err) {
       console.error('Move to cart failed:', err);
-      const msg = err?.message || err?.data?.message || 'Failed to move to cart';
-      toast.error(msg);
+      toast.error(err?.message || 'Failed to move to cart');
     }
   };
 
