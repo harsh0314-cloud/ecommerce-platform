@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Star, MessageSquare, User } from 'lucide-react';
 import api from '../services/api';
-import { toast } from 'sonner';
+import toast from 'react-hot-toast';
 
 function StarRating({ rating, size = 16, interactive = false, onRate }) {
   const [hover, setHover] = useState(0);
