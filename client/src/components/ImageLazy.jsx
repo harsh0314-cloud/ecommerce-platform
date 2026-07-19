@@ -1,11 +1,18 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
-export default function ImageLazy({ src, alt, className = '', placeholder = 'bg-gray-100' }) {
+const ImageLazy = ({ 
+  src, 
+  alt, 
+  className = '', 
+  priority = false 
+}) => {
   const [isLoaded, setIsLoaded] = useState(false);
-  const [isInView, setIsInView] = useState(false);
+  const [isInView, setIsInView] = useState(priority);
   const imgRef = useRef(null);
 
   useEffect(() => {
+    if (priority) return;
+
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
@@ -21,19 +28,25 @@ export default function ImageLazy({ src, alt, className = '', placeholder = 'bg-
     }
 
     return () => observer.disconnect();
-  }, []);
+  }, [priority]);
 
   return (
-    <div ref={imgRef} className={`relative overflow-hidden ${placeholder} ${className}`}>
+    <div ref={imgRef} className={`relative overflow-hidden ${className}`}>
+      {!isLoaded && (
+        <div className="absolute inset-0 bg-gray-100 animate-pulse" />
+      )}
       {isInView && (
         <img
           src={src}
           alt={alt}
-          className={`h-full w-full object-cover transition-opacity duration-500 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
+          className={`w-full h-full object-cover transition-opacity duration-500 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
           onLoad={() => setIsLoaded(true)}
-          loading="lazy"
+          loading={priority ? 'eager' : 'lazy'}
+          {...(priority ? { fetchpriority: 'high' } : {})}
         />
       )}
     </div>
   );
-}
+};
+
+export default ImageLazy;

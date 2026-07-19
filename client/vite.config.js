@@ -1,23 +1,28 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import path from 'path'
+import { fileURLToPath } from 'url'
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 export default defineConfig({
   plugins: [react()],
-  server: {
-    port: 5174,
-    proxy: { '/api': 'http://localhost:5000' },
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+    },
   },
   build: {
+    sourcemap: false,
     rollupOptions: {
       output: {
         manualChunks: {
-          'vendor': ['react', 'react-dom', 'react-router-dom'],
-          'ui': ['framer-motion', 'lucide-react'],
-          'state': ['zustand'],
-          'forms': ['react-hook-form', '@hookform/resolvers', 'zod'],
-        }
-      }
+          vendor: ['react', 'react-dom', 'react-router-dom'],
+          ui: ['lucide-react', 'framer-motion'],
+          state: ['zustand'],
+        },
+      },
     },
-    chunkSizeWarningLimit: 500,
-  }
+    chunkSizeWarningLimit: 1000,
+  },
 })

@@ -1,55 +1,67 @@
 import { useEffect } from 'react';
 
-export default function SEO({ 
-  title = 'StoreX — Luxury Essentials', 
-  description = 'Considered essentials and elevated staples. Designed in-house, made to endure.',
-  keywords = 'luxury clothing, premium fashion, designer wear, online shopping',
-  image = 'https://storex-frontend-gold.vercel.app/og-image.jpg',
-  url = 'https://storex-frontend-gold.vercel.app',
-  type = 'website'
-}) {
+const SEO = ({ 
+  title, 
+  description, 
+  image, 
+  url,
+  type = 'website',
+  keywords = ''
+}) => {
   useEffect(() => {
     // Update document title
-    document.title = title;
+    if (title) {
+      document.title = title;
+    }
 
-    // Update meta tags
-    const updateMeta = (name, content, property = false) => {
-      const selector = property ? `meta[property="${name}"]` : `meta[name="${name}"]`;
-      let meta = document.querySelector(selector);
+    // Helper to update or create meta tag
+    const setMeta = (selector, content, property = false) => {
+      if (!content) return;
+      const attr = property ? 'property' : 'name';
+      let meta = document.querySelector(`meta[${attr}="${selector}"]`);
       if (!meta) {
         meta = document.createElement('meta');
-        if (property) meta.setAttribute('property', name);
-        else meta.setAttribute('name', name);
+        meta.setAttribute(attr, selector);
         document.head.appendChild(meta);
       }
       meta.setAttribute('content', content);
     };
 
-    updateMeta('description', description);
-    updateMeta('keywords', keywords);
-    updateMeta('og:title', title, true);
-    updateMeta('og:description', description, true);
-    updateMeta('og:image', image, true);
-    updateMeta('og:url', url, true);
-    updateMeta('og:type', type, true);
-    updateMeta('twitter:title', title, true);
-    updateMeta('twitter:description', description, true);
-    updateMeta('twitter:image', image, true);
-    updateMeta('twitter:card', 'summary_large_image', true);
+    // Standard meta
+    if (description) setMeta('description', description);
+    if (keywords) setMeta('keywords', keywords);
 
-    // Update canonical
-    let canonical = document.querySelector('link[rel="canonical"]');
-    if (!canonical) {
-      canonical = document.createElement('link');
-      canonical.setAttribute('rel', 'canonical');
-      document.head.appendChild(canonical);
+    // Open Graph
+    if (title) setMeta('og:title', title, true);
+    if (description) setMeta('og:description', description, true);
+    if (image) setMeta('og:image', image, true);
+    if (url) setMeta('og:url', url, true);
+    setMeta('og:type', type, true);
+
+    // Twitter
+    if (title) setMeta('twitter:title', title, true);
+    if (description) setMeta('twitter:description', description, true);
+    if (image) setMeta('twitter:image', image, true);
+    if (url) setMeta('twitter:url', url, true);
+
+    // Canonical
+    if (url) {
+      let canonical = document.querySelector('link[rel="canonical"]');
+      if (!canonical) {
+        canonical = document.createElement('link');
+        canonical.setAttribute('rel', 'canonical');
+        document.head.appendChild(canonical);
+      }
+      canonical.setAttribute('href', url);
     }
-    canonical.setAttribute('href', url);
 
     return () => {
-      // Cleanup not needed for SPA navigation
+      // Reset to homepage defaults on unmount
+      document.title = 'StoreX — Luxury Essentials | Premium Clothing & Accessories';
     };
-  }, [title, description, keywords, image, url, type]);
+  }, [title, description, image, url, type, keywords]);
 
   return null;
-}
+};
+
+export default SEO;
