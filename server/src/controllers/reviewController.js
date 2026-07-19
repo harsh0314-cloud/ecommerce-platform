@@ -6,7 +6,7 @@ const getProductReviews = async (req, res, next) => {
     const { productId } = req.params;
 
     const reviews = await req.prisma.review.findMany({
-      where: { productId },
+      where: { productId, isActive: true },
       include: {
         user: {
           select: {
@@ -78,12 +78,24 @@ const createReview = async (req, res, next) => {
       return next(new AppError('Product not found', 404));
     }
 
+    // Check if user purchased this product
+    const hasOrdered = await req.prisma.orderItem.findFirst({
+      where: {
+        productId,
+        order: {
+          userId,
+          status: { not: 'CANCELLED' }
+        }
+      }
+    });
+
     const review = await req.prisma.review.create({
       data: {
         rating: parseInt(rating),
         comment: comment || null,
         userId,
-        productId
+        productId,
+        isVerified: !!hasOrdered
       },
       include: {
         user: {

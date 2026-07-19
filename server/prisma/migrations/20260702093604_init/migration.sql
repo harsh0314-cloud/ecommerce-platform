@@ -8,7 +8,7 @@ CREATE TYPE "OrderStatus" AS ENUM ('PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPE
 CREATE TYPE "PaymentStatus" AS ENUM ('PENDING', 'COMPLETED', 'FAILED', 'REFUNDED');
 
 -- CreateEnum
-CREATE TYPE "PaymentMethod" AS ENUM ('STRIPE', 'CASH_ON_DELIVERY');
+CREATE TYPE "PaymentMethod" AS ENUM ('RAZORPAY', 'CASH_ON_DELIVERY');
 
 -- CreateEnum
 CREATE TYPE "CouponType" AS ENUM ('PERCENTAGE', 'FIXED');
@@ -254,7 +254,7 @@ CREATE TABLE "payments" (
     "amount" DECIMAL(10,2) NOT NULL,
     "currency" TEXT NOT NULL DEFAULT 'usd',
     "transactionId" TEXT,
-    "stripePaymentIntentId" TEXT,
+    "razorpayPaymentId" TEXT,
     "receiptUrl" TEXT,
     "metadata" JSONB,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -453,7 +453,7 @@ CREATE UNIQUE INDEX "payments_orderId_key" ON "payments"("orderId");
 CREATE UNIQUE INDEX "payments_transactionId_key" ON "payments"("transactionId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "payments_stripePaymentIntentId_key" ON "payments"("stripePaymentIntentId");
+CREATE UNIQUE INDEX "payments_razorpayPaymentId_key" ON "payments"("razorpayPaymentId");
 
 -- CreateIndex
 CREATE INDEX "payments_status_idx" ON "payments"("status");

@@ -79,6 +79,7 @@ export default function OrderDetails() {
                 <MapPin size={18} className="mt-0.5 shrink-0" />
                 <div>
                   <p className="font-medium text-foreground">{order.address.firstName} {order.address.lastName}</p>
+                  <p>Phone: {order.address?.phone || 'N/A'}</p>
                   <p>{order.address.addressLine1}</p>
                   <p>{order.address.city}, {order.address.state} {order.address.postalCode}</p>
                   <p>{order.address.country}</p>
@@ -89,6 +90,7 @@ export default function OrderDetails() {
             <h3 className="font-bold text-foreground mb-4">Order Summary</h3>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between"><span className="text-muted-foreground">Subtotal</span><span>₹{parseFloat(order.subtotal).toFixed(2)}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Payment Method</span><span className="font-medium">{order.paymentMethod === 'RAZORPAY' ? 'Online Payment (Razorpay)' : 'Cash on Delivery'}</span></div>
               <div className="flex justify-between"><span className="text-muted-foreground">Shipping</span><span>₹{parseFloat(order.shippingCost).toFixed(2)}</span></div>
               <div className="flex justify-between"><span className="text-muted-foreground">Tax</span><span>₹{parseFloat(order.tax).toFixed(2)}</span></div>
               <div className="flex justify-between text-lg font-bold border-t border-border pt-2 mt-2"><span>Total</span><span>₹{parseFloat(order.total).toFixed(2)}</span></div>

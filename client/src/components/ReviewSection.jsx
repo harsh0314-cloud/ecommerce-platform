@@ -20,11 +20,8 @@ function StarRating({ rating, size = 16, interactive = false, onRate }) {
         >
           <Star
             size={size}
-            className={
-              star <= (hover || rating)
-                ? 'fill-gold text-gold'
-                : 'text-gray-300'
-            }
+            className={star <= (hover || rating) ? 'text-gold' : 'text-gray-300'}
+            fill={star <= (hover || rating) ? '#C7A86D' : 'none'}
           />
         </button>
       ))}
@@ -248,7 +245,7 @@ const fetchReviews = useCallback(async () => {
               return (
                 <div key={star} className="flex items-center gap-3">
                   <span className="text-xs w-3">{star}</span>
-                  <Star size={12} className="text-gold fill-gold" />
+                  <Star size={12} className="text-gold" fill="#C7A86D" />
                   <div className="flex-1 h-2 bg-surface">
                     <div
                       className="h-full bg-gold transition-all"

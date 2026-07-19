@@ -67,6 +67,7 @@ exports.createOrder = async (req, res, next) => {
           tax: pricing.tax, 
           total: pricing.total,
           status: 'CONFIRMED',
+          paymentMethod: req.body.paymentMethod || 'CASH_ON_DELIVERY',
           items: {
               create: cart.items.map(item => ({
               productId: item.productId,
