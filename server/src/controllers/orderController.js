@@ -119,6 +119,7 @@ exports.getMyOrders = async (req, res, next) => {
         take: limit,
         include: { 
           items: true,
+          address: true,
           coupon: { select: { code: true, type: true, value: true } }
         }
       }),
