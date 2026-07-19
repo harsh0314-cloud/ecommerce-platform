@@ -11,7 +11,8 @@ const getProductReviews = async (req, res, next) => {
         user: {
           select: {
             id: true,
-            name: true,
+            firstName: true,
+            lastName: true,
             email: true,
           }
         }
@@ -101,7 +102,8 @@ const createReview = async (req, res, next) => {
         user: {
           select: {
             id: true,
-            name: true,
+            firstName: true,
+            lastName: true,
             email: true,
           }
         }
@@ -146,7 +148,8 @@ const updateReview = async (req, res, next) => {
         user: {
           select: {
             id: true,
-            name: true,
+            firstName: true,
+            lastName: true,
             email: true,
           }
         }

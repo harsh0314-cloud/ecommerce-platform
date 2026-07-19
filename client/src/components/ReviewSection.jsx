@@ -143,7 +143,13 @@ function ReviewItem({ review, onDelete }) {
             <User size={18} className="text-muted-foreground" />
           </div>
           <div>
-            <p className="font-medium text-sm">{review.user?.name || 'Anonymous'}</p>
+            <p className="font-medium text-sm">
+              {review.user?.firstName && review.user?.lastName 
+                ? `${review.user.firstName} ${review.user.lastName}`
+                : review.user?.firstName 
+                ? review.user.firstName 
+                : 'Anonymous'}
+              </p>
             <p className="text-xs text-muted-foreground">
               {new Date(review.createdAt).toLocaleDateString('en-US', {
                 year: 'numeric',
