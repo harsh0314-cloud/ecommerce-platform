@@ -1,13 +1,11 @@
-import { useState, useEffect, useRef, Suspense, lazy } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, useScroll, useTransform } from 'framer-motion';
-import { ArrowRight, ArrowDown, Truck, RotateCcw, ShieldCheck, Headphones } from 'lucide-react';
+import { ArrowRight, ArrowUpRight, ArrowDown, Truck, RotateCcw, ShieldCheck, Headphones } from 'lucide-react';
 import api from '../services/api';
+import ProductCard from '../components/ProductCard';
+import Magnetic from '../components/Magnetic';
 import SEO from '../components/SEO';
-
-// Lazy load heavy components
-const ProductCard = lazy(() => import('../components/ProductCard'));
-const Magnetic = lazy(() => import('../components/Magnetic'));
 
 const ease = [0.76, 0, 0.24, 1];
 
@@ -47,22 +45,8 @@ function RevealNow({ children, delay = 0, className = '' }) {
   );
 }
 
-// Skeleton loader for products
-function ProductSkeleton() {
-  return (
-    <div className="animate-pulse">
-      <div className="aspect-[4/5] bg-gray-200 rounded-lg" />
-      <div className="mt-4 space-y-2">
-        <div className="h-4 bg-gray-200 rounded w-3/4" />
-        <div className="h-4 bg-gray-200 rounded w-1/2" />
-      </div>
-    </div>
-  );
-}
-
 export default function Home() {
   const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
   const heroRef = useRef(null);
   const [mouse, setMouse] = useState({ x: 0, y: 0 });
 
@@ -73,17 +57,17 @@ export default function Home() {
 
   useEffect(() => {
     api.get('/products', { params: { limit: 8 } })
-      .then((res) => {
-        setProducts(res.data.products || []);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
+      .then((res) => setProducts(res.data.products || []))
+      .catch(() => {});
   }, []);
 
   const handleMouse = (e) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    setMouse({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+    const x = (e.clientX / window.innerWidth - 0.5) * 2;
+    const y = (e.clientY / window.innerHeight - 0.5) * 2;
+    setMouse({ x, y });
   };
+
+  const featured = products.slice(0, 8);
 
   return (
     <>
@@ -93,103 +77,83 @@ export default function Home() {
         keywords="luxury clothing, premium fashion, designer wear, online shopping, StoreX, hoodies, t-shirts, jackets, footwear"
         url="https://storex-frontend-gold.vercel.app"
       />
-
-      <div className="overflow-x-hidden">
+      <div className="bg-background overflow-x-hidden">
         {/* HERO */}
-        <section ref={heroRef} className="relative h-screen w-full overflow-hidden">
-          <motion.div style={{ y: imgY }} className="absolute inset-0">
-            <img src={HERO} alt="StoreX Hero" className="h-full w-full object-cover" loading="eager" fetchpriority="high" />
-            <div className="absolute inset-0 bg-black/30" />
+        <section ref={heroRef} onMouseMove={handleMouse} className="relative h-[90dvh] md:h-screen overflow-hidden bg-ink text-white">
+          <motion.div style={{ y: imgY }} className="absolute inset-0 z-0">
+            <motion.img
+              src={HERO}
+              alt="Editorial hero"
+              initial={{ scale: 1.2, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 1.6, ease }}
+              style={{ x: mouse.x * -18, y: mouse.y * -18 }}
+              className="h-full w-full object-cover object-[center_35%]"
+            />
+            <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/40 to-black/10" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/30" />
           </motion.div>
-          <motion.div style={{ y: textY, opacity: heroOpacity }} className="relative z-10 flex h-full flex-col items-center justify-center px-6 text-center text-white">
-            <RevealNow>
-              <p className="overline mb-6 text-white/80">New Collection 2026</p>
-            </RevealNow>
-            <RevealNow delay={0.1}>
-              <h1 className="font-display text-5xl font-bold tracking-tight md:text-7xl lg:text-8xl">
-                The Essentials
+
+          <div className="container-luxe relative z-10 flex h-full flex-col justify-end pb-[8vh] md:pb-[14vh]">
+            <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5, duration: 0.8, ease }} className="overline mb-4 md:mb-5 text-white/70">
+              Autumn / Winter 2026
+            </motion.p>
+            <motion.div initial={{ opacity: 0, y: 60 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35, duration: 1, ease }} style={{ x: mouse.x * 12 }}>
+              <h1 className="font-display text-[15vw] font-extrabold uppercase leading-[0.85] tracking-tighter text-white drop-shadow-[0_2px_40px_rgba(0,0,0,0.7)] sm:text-[14vw] lg:text-[11vw]">
+                The Icon
               </h1>
-            </RevealNow>
-            <RevealNow delay={0.2}>
-              <p className="mx-auto mt-6 max-w-md text-base text-white/80 md:text-lg">
-                Considered essentials and elevated staples. Designed in-house, made to endure.
-              </p>
-            </RevealNow>
-            <RevealNow delay={0.3}>
-              <div className="mt-10 flex gap-4">
-                <Link to="/products" className="bg-white px-8 py-4 text-[11px] font-semibold uppercase tracking-luxe-sm text-foreground transition-colors hover:bg-white/90">
-                  Shop Now
-                </Link>
-                <Link to="/products" className="border border-white px-8 py-4 text-[11px] font-semibold uppercase tracking-luxe-sm text-white transition-colors hover:bg-white hover:text-foreground">
-                  View Lookbook
-                </Link>
-              </div>
-            </RevealNow>
-          </motion.div>
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.5, duration: 1 }} className="absolute bottom-8 left-1/2 z-10 -translate-x-1/2 text-white">
-            <motion.div animate={{ y: [0, 8, 0] }} transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut' }}>
-              <ArrowDown size={20} />
             </motion.div>
+            <div className="mt-4 md:mt-6 flex flex-col justify-between gap-6 md:gap-8 sm:flex-row sm:items-end">
+              <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.9, duration: 1 }} className="max-w-xs md:max-w-md text-sm md:text-base font-light text-white/75">
+                A study in restraint. Elevated staples cut from the finest fabrics — the wardrobe, distilled.
+              </motion.p>
+              <Magnetic>
+                <Link to="/products" data-testid="hero-cta" className="group inline-flex items-center gap-3 bg-white px-8 py-3.5 md:px-10 md:py-4 text-[11px] font-semibold uppercase tracking-luxe-sm text-foreground transition-colors hover:bg-gold hover:text-white">
+                  Shop The Collection
+                  <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
+                </Link>
+              </Magnetic>
+            </div>
+          </div>
+
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.4 }} className="hidden md:flex absolute bottom-8 left-1/2 z-10 -translate-x-1/2 flex-col items-center gap-2 text-white/60">
+            <span className="text-[10px] uppercase tracking-luxe-sm">Scroll</span>
+            <motion.div animate={{ y: [0, 8, 0] }} transition={{ repeat: Infinity, duration: 1.8 }}><ArrowDown size={16} /></motion.div>
           </motion.div>
         </section>
 
         {/* MARQUEE */}
-        <div className="bg-foreground py-4 text-white">
-          <div className="flex overflow-hidden whitespace-nowrap">
-            <motion.div animate={{ x: ['0%', '-50%'] }} transition={{ repeat: Infinity, duration: 20, ease: 'linear' }} className="flex shrink-0 gap-12 px-6 text-[11px] font-semibold uppercase tracking-luxe-sm">
-              {[...marqueeItems, ...marqueeItems].map((item, i) => (
-                <span key={i} className="flex items-center gap-3">
-                  <span className="h-1 w-1 rounded-full bg-white/40" />
-                  {item}
-                </span>
-              ))}
-            </motion.div>
+        <div className="border-y border-border bg-background py-5">
+          <div className="flex w-max animate-marquee gap-16 whitespace-nowrap">
+            {[...marqueeItems, ...marqueeItems].map((t, i) => (
+              <span key={i} className="flex items-center gap-16 font-display text-sm font-semibold uppercase tracking-luxe-sm text-foreground/70">
+                {t} <span className="text-gold">✦</span>
+              </span>
+            ))}
           </div>
         </div>
 
-        {/* FEATURED */}
-        <section className="container-luxe py-24">
-          <Reveal>
-            <div className="mb-12 flex items-end justify-between">
-              <div>
-                <p className="overline text-muted-foreground">Curated Selection</p>
-                <h2 className="mt-2 font-display text-3xl font-bold tracking-tight md:text-4xl">Featured Products</h2>
-              </div>
-              <Link to="/products" className="hidden items-center gap-2 text-sm font-semibold hover:underline md:flex">
-                View All <ArrowRight size={16} />
-              </Link>
-            </div>
-          </Reveal>
-          <div className="grid grid-cols-2 gap-6 md:grid-cols-4">
-            {loading ? (
-              Array.from({ length: 8 }).map((_, i) => <ProductSkeleton key={i} />)
-            ) : (
-              <Suspense fallback={<ProductSkeleton />}>
-                {products.map((product, i) => (
-                  <ProductCard key={product.id} product={product} index={i} />
-                ))}
-              </Suspense>
-            )}
-          </div>
-        </section>
-
         {/* COLLECTIONS */}
-        <section className="container-luxe pb-24">
-          <Reveal>
-            <p className="overline text-muted-foreground">Browse By Category</p>
-            <h2 className="mt-2 font-display text-3xl font-bold tracking-tight md:text-4xl">Collections</h2>
+        <section className="container-luxe py-24 md:py-32">
+          <Reveal className="mb-14 flex flex-col justify-between gap-4 md:flex-row md:items-end">
+            <div>
+              <p className="overline text-muted-foreground">Curated</p>
+              <h2 className="mt-3 font-display text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">Shop by Category</h2>
+            </div>
+            <Link to="/products" className="link-underline w-fit text-[11px] font-semibold uppercase tracking-luxe-sm">View All Categories</Link>
           </Reveal>
-          <div className="mt-12 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
-            {collections.map((col, i) => (
-              <Reveal key={col.slug} delay={i * 0.08}>
-                <Link to={`/products?category=${col.slug}`} className="group relative block aspect-[3/4] overflow-hidden">
-                  <img src={col.image} alt={col.name} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" loading="lazy" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                  <div className="absolute bottom-4 left-4 text-white">
-                    <h3 className="font-display text-lg font-semibold">{col.name}</h3>
-                    <span className="mt-1 inline-flex items-center gap-1 text-xs font-semibold opacity-0 transition-opacity group-hover:opacity-100">
-                      Explore <ArrowRight size={12} />
-                    </span>
+
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
+            {collections.map((c, i) => (
+              <Reveal key={c.slug} delay={i * 0.06}>
+                <Link to={`/products?category=${c.slug}`} data-testid={`collection-${c.slug}`} className="group block">
+                  <div className="relative aspect-[3/4] overflow-hidden bg-surface">
+                    <img src={c.image} alt={c.name} loading="lazy" className="h-full w-full object-cover transition-transform duration-[1100ms] ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-110" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-70" />
+                    <div className="absolute inset-x-0 bottom-0 flex items-center justify-between p-4 text-white">
+                      <span className="font-display text-sm font-bold uppercase tracking-luxe-sm">{c.name}</span>
+                      <ArrowUpRight size={18} className="transition-transform duration-300 group-hover:-translate-y-1 group-hover:translate-x-1" />
+                    </div>
                   </div>
                 </Link>
               </Reveal>
@@ -197,61 +161,67 @@ export default function Home() {
           </div>
         </section>
 
-        {/* EDITORIAL */}
-        <section className="relative">
+        {/* EDITORIAL SPLIT */}
+        <section className="relative bg-surface">
           <div className="grid md:grid-cols-2">
-            <div className="relative aspect-square md:aspect-auto md:h-[600px]">
-              <img src={EDITORIAL} alt="Editorial" className="h-full w-full object-cover" loading="lazy" />
+            <div className="relative min-h-[60vh] overflow-hidden">
+              <motion.img initial={{ scale: 1.15 }} whileInView={{ scale: 1 }} viewport={{ once: true }} transition={{ duration: 1.4, ease }} src={EDITORIAL} alt="Editorial" className="absolute inset-0 h-full w-full object-cover" />
             </div>
-            <div className="flex items-center bg-surface px-8 py-16 md:px-16">
-              <div>
-                <Reveal>
-                  <p className="overline text-muted-foreground">The Philosophy</p>
-                  <h2 className="mt-4 font-display text-3xl font-bold tracking-tight md:text-4xl">Designed In-House.<br />Made To Endure.</h2>
-                  <p className="mt-6 max-w-md text-muted-foreground leading-relaxed">
-                    Every piece is designed with intention — from fabric selection to the final stitch. 
-                    We believe in clothing that outlasts trends and becomes part of your daily ritual.
-                  </p>
-                  <Link to="/products" className="mt-8 inline-block border border-foreground px-8 py-4 text-[11px] font-semibold uppercase tracking-luxe-sm transition-colors hover:bg-foreground hover:text-white">
-                    Explore The Collection
+            <div className="flex items-center px-8 py-20 md:px-20">
+              <Reveal>
+                <p className="overline text-gold">The Philosophy</p>
+                <h2 className="mt-5 font-display text-4xl font-bold leading-tight tracking-tight sm:text-5xl">Fewer, better things.</h2>
+                <p className="mt-6 max-w-md text-base font-light leading-relaxed text-muted-foreground">
+                  Every piece begins with the fabric. We source mills renowned for their craft, then cut clean, considered silhouettes designed to outlast the season — and the trend.
+                </p>
+                <Magnetic className="mt-10 w-fit">
+                  <Link to="/products" className="group inline-flex items-center gap-3 border border-foreground px-9 py-4 text-[11px] font-semibold uppercase tracking-luxe-sm transition-colors hover:bg-foreground hover:text-white">
+                    Explore The Story <ArrowRight size={15} className="transition-transform group-hover:translate-x-1" />
                   </Link>
-                </Reveal>
-              </div>
+                </Magnetic>
+              </Reveal>
             </div>
           </div>
         </section>
 
-        {/* TRUST SIGNALS */}
-        <section className="container-luxe py-24">
-          <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
+        {/* BEST SELLERS */}
+        <section className="container-luxe py-24 md:py-32">
+          <Reveal className="mb-14 flex flex-col justify-between gap-4 md:flex-row md:items-end">
+            <div>
+              <p className="overline text-muted-foreground">Most Wanted</p>
+              <h2 className="mt-3 font-display text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">The Essentials</h2>
+            </div>
+            <Link to="/products" className="link-underline w-fit text-[11px] font-semibold uppercase tracking-luxe-sm">Shop All</Link>
+          </Reveal>
+
+          {featured.length === 0 ? (
+            <div className="grid grid-cols-2 gap-6 lg:grid-cols-4">
+              {[...Array(4)].map((_, i) => <div key={i} className="aspect-[4/5] animate-pulse bg-surface" />)}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-x-5 gap-y-12 lg:grid-cols-4">
+              {featured.map((p, i) => <ProductCard key={p.id} product={p} index={i} />)}
+            </div>
+          )}
+        </section>
+
+        {/* TRUST */}
+        <section className="border-t border-border bg-surface">
+          <div className="container-luxe grid grid-cols-2 gap-8 py-16 md:grid-cols-4">
             {[
-              { icon: Truck, title: 'Free Shipping', desc: 'On orders over ₹500' },
-              { icon: RotateCcw, title: 'Easy Returns', desc: '30-day return policy' },
-              { icon: ShieldCheck, title: 'Secure Payment', desc: 'SSL encrypted checkout' },
-              { icon: Headphones, title: '24/7 Support', desc: 'Always here to help' },
-            ].map((item, i) => (
-              <Reveal key={item.title} delay={i * 0.1}>
-                <div className="text-center">
-                  <item.icon size={24} className="mx-auto mb-4 text-muted-foreground" />
-                  <h3 className="font-display text-sm font-semibold">{item.title}</h3>
-                  <p className="mt-1 text-xs text-muted-foreground">{item.desc}</p>
+              { icon: Truck, title: 'Complimentary Shipping', desc: 'On all orders over $50' },
+              { icon: RotateCcw, title: 'Easy Returns', desc: '30-day return window' },
+              { icon: ShieldCheck, title: 'Secure Checkout', desc: 'Encrypted & protected' },
+              { icon: Headphones, title: 'Client Care', desc: 'Here whenever you need' },
+            ].map((t, i) => (
+              <Reveal key={i} delay={i * 0.08} className="flex flex-col items-center gap-4 text-center">
+                <t.icon size={26} strokeWidth={1.4} />
+                <div>
+                  <h3 className="font-display text-sm font-bold uppercase tracking-luxe-sm">{t.title}</h3>
+                  <p className="mt-1 text-xs text-muted-foreground">{t.desc}</p>
                 </div>
               </Reveal>
             ))}
-          </div>
-        </section>
-
-        {/* NEWSLETTER */}
-        <section className="bg-foreground py-24 text-white">
-          <div className="container-luxe text-center">
-            <Reveal>
-              <h2 className="font-display text-3xl font-bold tracking-tight md:text-4xl">Join The Inner Circle</h2>
-              <p className="mx-auto mt-4 max-w-md text-sm text-white/70">Be the first to know about new drops, exclusive offers, and behind-the-scenes content.</p>
-              <form className="mx-auto mt-8 flex max-w-md gap-3" onSubmit={(e) => { e.preventDefault(); toast.success('Subscribed!'); }}>
-                <input type="email" placeholder="Enter your email" required className="flex-1 border border-white/20 bg-transparent px-4 py-3 text-sm text-white placeholder:text-white/40 focus:border-white focus:outline-none" />
-                <button type="submit" className="bg-white px-6 py-3 text-[11px] font-semibold uppercase tracking-luxe-sm text-foreground transition-opacity hover:opacity-90">Subscribe</button>
-              </form>
-            </Reveal>
           </div>
         </section>
       </div>
