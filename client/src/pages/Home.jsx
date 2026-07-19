@@ -209,7 +209,7 @@ export default function Home() {
         <section className="border-t border-border bg-surface">
           <div className="container-luxe grid grid-cols-2 gap-8 py-16 md:grid-cols-4">
             {[
-              { icon: Truck, title: 'Complimentary Shipping', desc: 'On all orders over $50' },
+              { icon: Truck, title: 'Complimentary Shipping', desc: 'On all orders over ₹500' },
               { icon: RotateCcw, title: 'Easy Returns', desc: '30-day return window' },
               { icon: ShieldCheck, title: 'Secure Checkout', desc: 'Encrypted & protected' },
               { icon: Headphones, title: 'Client Care', desc: 'Here whenever you need' },
