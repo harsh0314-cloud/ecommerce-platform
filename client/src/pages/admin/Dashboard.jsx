@@ -55,10 +55,9 @@ export default function Dashboard() {
   ];
 
   // Helper to display correct payment method text
-  const getPaymentMethodText = (payment) => {
-    if (!payment) return 'Cash on Delivery';
-    if (payment.method === 'RAZORPAY' || payment.paymentMethod === 'RAZORPAY') return 'Paid via Razorpay';
-    if (payment.method === 'STRIPE' || payment.paymentMethod === 'STRIPE') return 'Paid via Stripe';
+    const getPaymentMethodText = (order) => {
+    if (order.paymentMethod === 'RAZORPAY') return 'Paid via Razorpay';
+    if (order.paymentMethod === 'STRIPE') return 'Paid via Stripe';
     return 'Cash on Delivery';
   };
 
@@ -188,7 +187,7 @@ export default function Dashboard() {
                             </div>
                             <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
                               <span className={`text-xs font-bold uppercase ${order.payment?.status === 'COMPLETED' ? 'text-green-600' : 'text-blue-600'}`}>
-                               💳 {getPaymentMethodText(order.payment)}
+                               💳 {getPaymentMethodText(order)}
                               </span>
                             </div>
                           </div>
