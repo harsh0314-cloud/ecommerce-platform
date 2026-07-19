@@ -21,7 +21,7 @@ function StarRating({ rating, size = 16, interactive = false, onRate }) {
           <Star
             size={size}
             className={star <= (hover || rating) ? 'text-gold' : 'text-gray-300'}
-            fill={star <= (hover || rating) ? '#C7A86D' : 'none'}
+            style={{ fill: star <= (hover || rating) ? '#C7A86D' : 'transparent' }}
           />
         </button>
       ))}
@@ -42,9 +42,10 @@ function ReviewForm({ productId, onReviewSubmitted }) {
     const fetchCanReview = async () => {
       try {
         const res = await api.get(`/reviews/can-review/${productId}`);
-        console.log('canReview response:', res.data); 
+        console.log('canReview response:', res.data);
         if (!isMounted) return;
-        setCanReview(res.data.data.canReview);
+        const canReviewValue = res.data?.data?.canReview ?? false;
+        setCanReview(canReviewValue);
       } catch (err) {
         console.error('canReview error:', err.response?.data || err.message);
         if (!isMounted) return;
@@ -86,11 +87,11 @@ function ReviewForm({ productId, onReviewSubmitted }) {
   if (checking) return null;
   if (!canReview) {
     return (
-      <div className="bg-surface p-6 text-center">
+      <div className="bg-surface p-6 text-center space-y-2">
         <p className="text-sm text-muted-foreground">
           Purchase this product to leave a review
         </p>
-        <p className="text-xs text-red-500 mt-2">
+        <p className="text-xs text-red-500">
           Debug: canReview={canReview ? 'true' : 'false'}, checking={checking ? 'true' : 'false'}
         </p>
       </div>
@@ -131,7 +132,6 @@ function ReviewForm({ productId, onReviewSubmitted }) {
 function ReviewItem({ review, onDelete }) {
   const [isOwner, setIsOwner] = useState(false);
 
-  // Safe useEffect - no setState during render, only after mount
   useEffect(() => {
     const checkOwnership = () => {
       const user = JSON.parse(localStorage.getItem('auth-storage') || '{}')?.state?.user;
@@ -152,9 +152,9 @@ function ReviewItem({ review, onDelete }) {
               {review.user?.firstName && review.user?.lastName 
                 ? `${review.user.firstName} ${review.user.lastName}`
                 : review.user?.firstName 
-                ? review.user.firstName 
-                : 'Anonymous'}
-              </p>
+                  ? review.user.firstName 
+                  : 'Anonymous'}
+            </p>
             <p className="text-xs text-muted-foreground">
               {new Date(review.createdAt).toLocaleDateString('en-US', {
                 year: 'numeric',
@@ -190,24 +190,30 @@ export default function ReviewSection({ productId }) {
   const [stats, setStats] = useState({ avgRating: 0, totalReviews: 0, distribution: {} });
   const [loading, setLoading] = useState(true);
 
-  // Define fetchReviews with useCallback BEFORE useEffect
-const fetchReviews = useCallback(async () => {
-  try {
-    const res = await api.get(`/reviews/product/${productId}`);
-    setReviews(res.data.data.reviews);
-    setStats({
-      avgRating: res.data.data.avgRating,
-      totalReviews: res.data.data.totalReviews,
-      distribution: res.data.data.distribution
-    });
-  } catch (err) {
-    console.error('Failed to fetch reviews:', err);
-  } finally {
-    setLoading(false);
-  }
-}, [productId]);
+  const fetchReviews = useCallback(async () => {
+    try {
+      const res = await api.get(`/reviews/product/${productId}`);
+      if (res.data?.data) {
+        setReviews(res.data.data.reviews || []);
+        setStats({
+          avgRating: res.data.data.avgRating || 0,
+          totalReviews: res.data.data.totalReviews || 0,
+          distribution: res.data.data.distribution || {}
+        });
+      } else {
+        setReviews([]);
+        setStats({ avgRating: 0, totalReviews: 0, distribution: {} });
+      }
+    } catch (err) {
+      console.error('Failed to fetch reviews:', err);
+      setReviews([]);
+      setStats({ avgRating: 0, totalReviews: 0, distribution: {} });
+    } finally {
+      setLoading(false);
+    }
+  }, [productId]);
 
- useEffect(() => {
+  useEffect(() => {
     const loadReviews = async () => {
       await fetchReviews();
     };
