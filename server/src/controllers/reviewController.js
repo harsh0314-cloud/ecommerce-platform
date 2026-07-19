@@ -196,31 +196,47 @@ const canReview = async (req, res, next) => {
     const { productId } = req.params;
     const userId = req.user.id;
 
-    // Check if user has purchased this product
-    const hasOrdered = await req.prisma.orderItem.findFirst({
+    console.log('canReview called:', { productId, userId });
+
+    // Check all orders for this user
+    const userOrders = await req.prisma.order.findMany({
       where: {
-        productId,
-        order: {
-          userId,
-          status: { not: 'CANCELLED' }
-        }
+        userId,
+        status: { not: 'CANCELLED' }
+      },
+      include: {
+        items: true
       }
     });
 
-    // Check if already reviewed
+    console.log('User orders:', userOrders.map(o => ({
+      orderId: o.id,
+      items: o.items.map(i => ({ productId: i.productId, name: i.name }))
+    })));
+
+    // Check if any order contains this product
+    const hasOrdered = userOrders.some(order => 
+      order.items.some(item => item.productId === productId)
+    );
+
+    console.log('Has ordered:', hasOrdered);
+
     const hasReviewed = await req.prisma.review.findFirst({
       where: { userId, productId }
     });
 
+    console.log('Has reviewed:', !!hasReviewed);
+
     res.status(200).json({
       status: 'success',
       data: {
-        canReview: !!hasOrdered && !hasReviewed,
-        hasOrdered: !!hasOrdered,
+        canReview: hasOrdered && !hasReviewed,
+        hasOrdered,
         hasReviewed: !!hasReviewed
       }
     });
   } catch (err) {
+    console.error('canReview error:', err);
     next(err);
   }
 };

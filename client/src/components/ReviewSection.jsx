@@ -18,10 +18,10 @@ function StarRating({ rating, size = 16, interactive = false, onRate }) {
           onMouseLeave={() => interactive && setHover(0)}
           className={`transition-colors ${interactive ? 'cursor-pointer' : 'cursor-default'}`}
         >
-            <Star
+          <Star
             size={size}
             className={star <= (hover || rating) ? 'text-gold' : 'text-gray-300'}
-            style={{ fill: star <= (hover || rating) ? '#C7A86D' : 'none' }}
+            fill={star <= (hover || rating) ? '#C7A86D' : 'none'}
           />
         </button>
       ))}
