@@ -19,7 +19,8 @@ const orderRoutes = require('./src/routes/orderRoutes');
 const paymentRoutes = require('./src/routes/paymentRoutes');
 const userRoutes = require('./src/routes/userRoutes');
 const wishlistRoutes = require('./src/routes/wishlistRoutes');
-const couponRoutes = require('./src/routes/couponRoutes'); // ADD THIS
+const couponRoutes = require('./src/routes/couponRoutes'); 
+const reviewRoutes = require('./src/routes/reviewRoutes');
 
 const app = express();
 const prisma = new PrismaClient();
@@ -100,7 +101,7 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/wishlist', wishlistRoutes);
 app.use('/api/coupons', couponRoutes); // ADD THIS
-
+app.use('/api/reviews', reviewRoutes);
 app.use('*', (req, res) => {
   res.status(404).json({ error: `Route ${req.originalUrl} not found` });
 });

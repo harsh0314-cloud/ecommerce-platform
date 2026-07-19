@@ -1,13 +1,14 @@
 import { useState, useEffect, Suspense, lazy } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ShoppingCart, Heart, ArrowLeft, Truck, RotateCcw, ShieldCheck } from 'lucide-react';
+import { Heart, ArrowLeft, Truck, RotateCcw, ShieldCheck } from 'lucide-react';
 import api from '../services/api';
 import toast from 'react-hot-toast';
 import SEO from '../components/SEO';
 import { useCartStore } from '../store/cartStore';
 import useWishlist from '../hooks/useWishlist';
 import { fmtPrice } from '../components/ProductCard';
+import ReviewSection from '../components/ReviewSection';
 
 const ProductCard = lazy(() => import('../components/ProductCard'));
 
@@ -159,6 +160,8 @@ export default function ProductDetails() {
             </div>
           </div>
         </div>
+
+        <ReviewSection productId={product.id} />
 
         {/* Related */}
         {related.length > 0 && (
