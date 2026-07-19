@@ -42,9 +42,11 @@ function ReviewForm({ productId, onReviewSubmitted }) {
     const fetchCanReview = async () => {
       try {
         const res = await api.get(`/reviews/can-review/${productId}`);
+        console.log('canReview response:', res.data); 
         if (!isMounted) return;
         setCanReview(res.data.data.canReview);
-      } catch {
+      } catch (err) {
+        console.error('canReview error:', err.response?.data || err.message);
         if (!isMounted) return;
         setCanReview(false);
       } finally {
@@ -87,6 +89,9 @@ function ReviewForm({ productId, onReviewSubmitted }) {
       <div className="bg-surface p-6 text-center">
         <p className="text-sm text-muted-foreground">
           Purchase this product to leave a review
+        </p>
+        <p className="text-xs text-red-500 mt-2">
+          Debug: canReview={canReview ? 'true' : 'false'}, checking={checking ? 'true' : 'false'}
         </p>
       </div>
     );
@@ -206,7 +211,6 @@ const fetchReviews = useCallback(async () => {
     const loadReviews = async () => {
       await fetchReviews();
     };
-
     loadReviews();
   }, [fetchReviews]);
 
