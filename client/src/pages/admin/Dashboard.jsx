@@ -56,11 +56,10 @@ export default function Dashboard() {
 
   // Helper to display correct payment method text
   const getPaymentMethodText = (payment) => {
-    if (!payment || payment.status !== 'COMPLETED') return 'Cash on Delivery';
-    
-    if (payment.method === 'RAZORPAY') return 'Paid via Razorpay';
-    if (payment.method === 'STRIPE') return 'Paid via Stripe';
-    return 'Paid Online';
+    if (!payment) return 'Cash on Delivery';
+    if (payment.method === 'RAZORPAY' || payment.paymentMethod === 'RAZORPAY') return 'Paid via Razorpay';
+    if (payment.method === 'STRIPE' || payment.paymentMethod === 'STRIPE') return 'Paid via Stripe';
+    return 'Cash on Delivery';
   };
 
   return (
