@@ -6,9 +6,12 @@ const couponController = require('../controllers/couponController');
 
 router.use(authenticate);
 
+// POST routes first (before parameterized routes)
+router.post('/', orderController.createOrder);
+router.post('/validate-coupon', couponController.validateCoupon);
+
+// GET routes
 router.get('/my-orders', orderController.getMyOrders);
 router.get('/:id', orderController.getOrderById);
-router.post('/', orderController.createOrder);
-router.post('/validate-coupon', couponController.validateCoupon); 
 
 module.exports = router;

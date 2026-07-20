@@ -3,7 +3,7 @@ const { AppError } = require('../utils/AppError');
 
 exports.createOrder = async (req, res, next) => {
   try {
-    const { firstName, lastName, phone, addressLine1, city, state, postalCode, country, couponCode } = req.body;
+    const { firstName, lastName, phone, addressLine1, city, state, postalCode, country, couponCode, paymentMethod } = req.body;
 
     const cart = await req.prisma.cart.findUnique({
       where: { userId: req.user.id },
@@ -67,7 +67,7 @@ exports.createOrder = async (req, res, next) => {
           tax: pricing.tax, 
           total: pricing.total,
           status: 'CONFIRMED',
-          paymentMethod: req.body.paymentMethod || 'CASH_ON_DELIVERY',
+          paymentMethod: paymentMethod || 'CASH_ON_DELIVERY',
           items: {
               create: cart.items.map(item => ({
               productId: item.productId,
