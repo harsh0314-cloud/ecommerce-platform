@@ -42,20 +42,22 @@
     let product;
     try {
       product = await req.prisma.$transaction(async (tx) => {
-        const newProduct = await tx.product.create({
-          data: {
-            name,
-            slug,
-            price: price,
-            comparePrice: comparePrice || null,
-            description,
-            categoryId,
-            brandId,
-            isActive: true,
-            isNewArrival: req.body.isNewArrival || false,
-            isBestSeller: req.body.isBestSeller || false,
-          }
-        });
+              const newProduct = await tx.product.create({
+        data: {
+          name,
+          slug,
+          sku: req.body.sku || slug.toUpperCase().replace(/-/g, '_'),
+          price: price.toString(),
+          comparePrice: comparePrice ? comparePrice.toString() : null,
+          description,
+          categoryId,
+          brandId,
+          isActive: true,
+          isNewArrival: req.body.isNewArrival || false,
+          isBestSeller: req.body.isBestSeller || false,
+        }
+      });
+
         // Create inventory
         if (inventory !== undefined) {
           await tx.inventory.create({
