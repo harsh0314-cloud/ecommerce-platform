@@ -6,7 +6,7 @@ const { AppError } = require('../utils/AppError');
 // 1. Create Razorpay Order ID
 exports.createRazorpayOrder = async (req, res, next) => {
   try {
-    const { firstName, lastName, phone, addressLine1, city, state, postalCode, country } = req.body;
+    const { firstName, lastName, phone, addressLine1, city, state, postalCode, country, couponCode } = req.body;
 
     const cart = await req.prisma.cart.findUnique({
       where: { userId: req.user.id },
@@ -17,7 +17,22 @@ exports.createRazorpayOrder = async (req, res, next) => {
       return next(new AppError('Your cart is empty', 400));
     }
 
-    const subtotal = cart.items.reduce((sum, item) => sum + (parseFloat(item.product.price) * item.quantity), 0);
+    let subtotal = cart.items.reduce((sum, item) => sum + (parseFloat(item.product.price) * item.quantity), 0);
+
+    // Apply coupon if provided
+    let discount = 0;
+    if (couponCode) {
+      const coupon = await req.prisma.coupon.findUnique({ where: { code: couponCode.toUpperCase() } });
+      if (coupon && coupon.isActive && new Date(coupon.expiresAt) > new Date()) {
+        if (coupon.type === 'PERCENTAGE') {
+          discount = subtotal * (parseFloat(coupon.value) / 100);
+        } else {
+          discount = parseFloat(coupon.value);
+        }
+        subtotal = Math.max(0, subtotal - discount);
+      }
+    }
+
     const pricing = calculateOrderTotals(subtotal);
 
     const address = await req.prisma.address.create({
@@ -30,12 +45,13 @@ exports.createRazorpayOrder = async (req, res, next) => {
         userId: req.user.id,
         addressId: address.id,
         subtotal: pricing.subtotal,
-        discount: "0.00",
+        discount: discount.toFixed(2),
         shippingCost: pricing.shippingCost,
         tax: pricing.tax,
         total: pricing.total,
         status: 'PENDING',
         paymentMethod: 'RAZORPAY',
+        couponCode: couponCode || null,
         items: {
           create: cart.items.map(item => ({
             productId: item.productId,
@@ -97,19 +113,17 @@ exports.verifyRazorpayPayment = async (req, res, next) => {
     }
 
     const body = razorpay_order_id + "|" + razorpay_payment_id;
-    // Added .trim() to absolutely prevent hidden space errors in the secret key
     const expectedSignature = crypto.createHmac('sha256', process.env.RAZORPAY_KEY_SECRET?.trim()).update(body).digest('hex');
 
     if (expectedSignature !== razorpay_signature) {
       return next(new AppError('Invalid payment signature', 400));
     }
 
-    // FIXED: Added include: { items: true } so order.items is not undefined
     const order = await req.prisma.order.findUnique({ 
       where: { id: orderId },
       include: { items: true } 
     });
-    
+
     if (!order) return next(new AppError('Order not found', 404));
 
     await req.prisma.$transaction(async (tx) => {
@@ -127,7 +141,7 @@ exports.verifyRazorpayPayment = async (req, res, next) => {
         }
       });
 
-      // Decrement Inventory (Now works because order.items is fetched)
+      // Decrement Inventory
       for (const item of order.items) {
         await tx.inventory.update({
           where: { productId: item.productId },
@@ -153,7 +167,7 @@ exports.handleWebhook = async (req, res, next) => {
   try {
     const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
     const signature = req.headers['x-razorpay-signature'];
-    
+
     if (!secret || !signature) {
       return res.status(400).json({ status: 'error', message: 'Missing webhook signature' });
     }
@@ -166,23 +180,24 @@ exports.handleWebhook = async (req, res, next) => {
     }
 
     const event = JSON.parse(bodyString);
-    
+
     if (event.event === 'payment.captured') {
       const payload = event.payload?.payment?.entity;
       const orderId = payload.notes?.orderId;
-      
+
       if (!orderId) return res.status(200).json({ status: 'success' });
 
       const order = await req.prisma.order.findUnique({ where: { id: orderId } });
-      
+
       if (!order || order.status === 'CONFIRMED') {
         return res.status(200).json({ status: 'success' });
       }
 
       await req.prisma.$transaction(async (tx) => {
         await tx.order.update({ where: { id: order.id }, data: { status: 'CONFIRMED' } });
-        
-        if (!await tx.payment.findUnique({ where: { transactionId: payload.id } })) {
+
+        const existingPayment = await tx.payment.findUnique({ where: { transactionId: payload.id } });
+        if (!existingPayment) {
           await tx.payment.create({
             data: {
               orderId: order.id,
@@ -195,7 +210,7 @@ exports.handleWebhook = async (req, res, next) => {
             }
           });
         }
-        
+
         const orderItems = await tx.orderItem.findMany({ where: { orderId: order.id } });
         for (const item of orderItems) {
           await tx.inventory.update({
