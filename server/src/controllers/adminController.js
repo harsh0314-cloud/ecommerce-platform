@@ -42,8 +42,8 @@
           data: {
             name,
             slug,
-            price: parseFloat(price),
-            comparePrice: comparePrice ? parseFloat(comparePrice) : null,
+            price: price.toString(),
+            comparePrice: comparePrice ? comparePrice.toString() : null,
             description,
             categoryId,
             brandId,
@@ -96,8 +96,8 @@
       const updateData = {};
       if (name) updateData.name = name;
       if (slug) updateData.slug = slug;
-      if (price !== undefined) updateData.price = parseFloat(price);
-      if (comparePrice !== undefined) updateData.comparePrice = comparePrice ? parseFloat(comparePrice) : null;
+      if (price !== undefined) updateData.price = price.toString();
+      if (comparePrice !== undefined) updateData.comparePrice = comparePrice ? comparePrice.toString() : null;
       if (description !== undefined) updateData.description = description;
       if (categoryId) updateData.categoryId = categoryId;
       if (brandId) updateData.brandId = brandId;
