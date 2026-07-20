@@ -36,17 +36,15 @@ function ReviewForm({ productId, onReviewSubmitted }) {
   const [canReview, setCanReview] = useState(false);
   const [checking, setChecking] = useState(true);
 
-  useEffect(() => {
+    useEffect(() => {
+    if (!productId) return;
     let isMounted = true;
 
-        const fetchCanReview = async () => {
+    const fetchCanReview = async () => {
       try {
         const res = await api.get(`/reviews/can-review/${productId}`);
-        console.log('canReview response:', res.data);
         if (!isMounted) return;
-        // Handle both response structures
         const canReviewValue = res.data?.data?.canReview ?? res.data?.canReview ?? false;
-        console.log('Setting canReview to:', canReviewValue);
         setCanReview(canReviewValue);
       } catch (err) {
         console.error('canReview error:', err.response?.data || err.message);
@@ -189,20 +187,17 @@ export default function ReviewSection({ productId }) {
   const [stats, setStats] = useState({ avgRating: 0, totalReviews: 0, distribution: {} });
   const [loading, setLoading] = useState(true);
 
-  const fetchReviews = useCallback(async () => {
+    const fetchReviews = useCallback(async () => {
+    if (!productId) return;
     try {
       const res = await api.get(`/reviews/product/${productId}`);
-      if (res.data?.data) {
-        setReviews(res.data.data.reviews || []);
-        setStats({
-          avgRating: res.data.data.avgRating || 0,
-          totalReviews: res.data.data.totalReviews || 0,
-          distribution: res.data.data.distribution || {}
-        });
-      } else {
-        setReviews([]);
-        setStats({ avgRating: 0, totalReviews: 0, distribution: {} });
-      }
+      const responseData = res.data?.data || res.data;
+      setReviews(responseData?.reviews || []);
+      setStats({
+        avgRating: responseData?.avgRating || 0,
+        totalReviews: responseData?.totalReviews || 0,
+        distribution: responseData?.distribution || {}
+      });
     } catch (err) {
       console.error('Failed to fetch reviews:', err);
       setReviews([]);
@@ -212,12 +207,13 @@ export default function ReviewSection({ productId }) {
     }
   }, [productId]);
 
-  useEffect(() => {
+    useEffect(() => {
+    if (!productId) return;
     const loadReviews = async () => {
       await fetchReviews();
     };
     loadReviews();
-  }, [fetchReviews]);
+  }, [fetchReviews, productId]);
 
   const handleDelete = async (reviewId) => {
     try {
