@@ -204,6 +204,88 @@ exports.deleteProduct = async (req, res, next) => {
   }
 };
 
+// ─── INVENTORY ──────────────────────────────────────────────────────
+exports.getAllInventory = async (req, res, next) => {
+  try {
+    const inventory = await prisma.inventory.findMany({
+      include: {
+        product: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            sku: true,
+            images: { take: 1, select: { url: true } },
+          },
+        },
+      },
+      orderBy: { updatedAt: 'desc' },
+    });
+
+    res.status(200).json({
+      status: 'success',
+      data: { inventory },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.updateInventory = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { quantity, lowStockThreshold } = req.body;
+
+    const updateData = {};
+    if (quantity !== undefined) updateData.quantity = parseInt(quantity);
+    if (lowStockThreshold !== undefined) updateData.lowStockThreshold = parseInt(lowStockThreshold);
+
+    const inventory = await prisma.inventory.update({
+      where: { id },
+      data: updateData,
+    });
+
+    res.status(200).json({
+      status: 'success',
+      data: { inventory },
+    });
+  } catch (error) {
+    if (error.code === 'P2025') {
+      return next(new AppError('Inventory record not found', 404));
+    }
+    next(error);
+  }
+};
+
+exports.bulkUpdateInventory = async (req, res, next) => {
+  try {
+    const { updates } = req.body;
+
+    if (!Array.isArray(updates) || updates.length === 0) {
+      return next(new AppError('Updates array is required', 400));
+    }
+
+    await prisma.$transaction(
+      updates.map((update) =>
+        prisma.inventory.update({
+          where: { id: update.id },
+          data: {
+            quantity: update.quantity !== undefined ? parseInt(update.quantity) : undefined,
+            lowStockThreshold: update.lowStockThreshold !== undefined ? parseInt(update.lowStockThreshold) : undefined,
+          },
+        })
+      )
+    );
+
+    res.status(200).json({
+      status: 'success',
+      message: `${updates.length} inventory records updated`,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // ─── ORDERS ─────────────────────────────────────────────────────────
 exports.getAllOrders = async (req, res, next) => {
   try {
@@ -271,7 +353,39 @@ exports.updateOrderStatus = async (req, res, next) => {
   }
 };
 
-// ─── USERS ──────────────────────────────────────────────────────────
+// ─── CUSTOMERS ──────────────────────────────────────────────────────
+exports.getAllCustomers = async (req, res, next) => {
+  try {
+    const customers = await prisma.user.findMany({
+      where: { role: 'USER' },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        phone: true,
+        isActive: true,
+        createdAt: true,
+        _count: {
+          select: {
+            orders: true,
+            addresses: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    res.status(200).json({
+      status: 'success',
+      data: { customers },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ─── USERS (alias for getAllUsers if needed elsewhere) ──────────────
 exports.getAllUsers = async (req, res, next) => {
   try {
     const users = await prisma.user.findMany({
