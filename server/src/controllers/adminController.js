@@ -30,33 +30,28 @@
   // PRODUCT MANAGEMENT
   // ==========================================
   exports.createProduct = async (req, res, next) => {
-  try {
-    const { name, slug, price, comparePrice, description, categoryId, brandId, inventory, images } = req.body;
-
-    console.log('createProduct called with:', { name, slug, price, categoryId, brandId, description });
-
-    if (!name || !slug || !price || !categoryId || !brandId) {
-      return next(new AppError('Name, slug, price, categoryId, brandId are required', 400));
-    }
-
-    let product;
     try {
-      product = await req.prisma.$transaction(async (tx) => {
-              const newProduct = await tx.product.create({
-        data: {
-          name,
-          slug,
-          sku: req.body.sku || slug.toUpperCase().replace(/-/g, '_'),
-          price: price.toString(),
-          comparePrice: comparePrice ? comparePrice.toString() : null,
-          description,
-          categoryId,
-          brandId,
-          isActive: true,
-          isNewArrival: req.body.isNewArrival || false,
-          isBestSeller: req.body.isBestSeller || false,
-        }
-      });
+      const { name, slug, price, comparePrice, description, categoryId, brandId, inventory, images } = req.body;
+
+      if (!name || !slug || !price || !categoryId || !brandId) {
+        return next(new AppError('Name, slug, price, categoryId, brandId are required', 400));
+      }
+
+      const product = await req.prisma.$transaction(async (tx) => {
+        const newProduct = await tx.product.create({
+          data: {
+            name,
+            slug,
+            price: price.toString(),
+            comparePrice: comparePrice ? comparePrice.toString() : null,
+            description,
+            categoryId,
+            brandId,
+            isActive: true,
+            isNewArrival: req.body.isNewArrival || false,
+            isBestSeller: req.body.isBestSeller || false,
+          }
+        });
 
         // Create inventory
         if (inventory !== undefined) {
@@ -83,20 +78,15 @@
 
         return newProduct;
       });
-    } catch (txError) {
-      console.error('Transaction error:', txError);
-      throw txError;
-    }
 
-    res.status(201).json({ status: 'success', data: product });
-  } catch (error) {
-    console.error('createProduct error:', error);
-    if (error.code === 'P2002') {
-      return next(new AppError('Product with this slug already exists', 400));
+      res.status(201).json({ status: 'success', data: product });
+    } catch (error) {
+      if (error.code === 'P2002') {
+        return next(new AppError('Product with this slug already exists', 400));
+      }
+      next(error);
     }
-    next(error);
-  }
-};
+  };
 
   exports.updateProduct = async (req, res, next) => {
     try {
