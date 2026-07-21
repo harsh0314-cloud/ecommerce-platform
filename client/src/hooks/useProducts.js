@@ -26,8 +26,6 @@ export default function useProducts() {
 
     api.get('/products', { params: filters })
   .then((res) => {
-    console.log("Products API:", res.data);
-
     setProducts(res.data.products || []);
     setPagination(
       res.data.pagination || {

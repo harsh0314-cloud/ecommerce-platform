@@ -1,4 +1,4 @@
-const AppError = require('../utils/AppError');
+const { AppError } = require('../utils/AppError');
 
 // Get all reviews for a product
 const getProductReviews = async (req, res, next) => {
@@ -199,9 +199,6 @@ const canReview = async (req, res, next) => {
     const { productId } = req.params;
     const userId = req.user.id;
 
-    console.log('canReview called:', { productId, userId });
-
-    // Check all orders for this user
     const userOrders = await req.prisma.order.findMany({
       where: {
         userId,
@@ -212,23 +209,13 @@ const canReview = async (req, res, next) => {
       }
     });
 
-    console.log('User orders:', userOrders.map(o => ({
-      orderId: o.id,
-      items: o.items.map(i => ({ productId: i.productId, name: i.name }))
-    })));
-
-    // Check if any order contains this product
     const hasOrdered = userOrders.some(order => 
       order.items.some(item => item.productId === productId)
     );
 
-    console.log('Has ordered:', hasOrdered);
-
     const hasReviewed = await req.prisma.review.findFirst({
       where: { userId, productId }
     });
-
-    console.log('Has reviewed:', !!hasReviewed);
 
     res.status(200).json({
       status: 'success',
@@ -239,7 +226,6 @@ const canReview = async (req, res, next) => {
       }
     });
   } catch (err) {
-    console.error('canReview error:', err);
     next(err);
   }
 };

@@ -3,21 +3,23 @@ const { AppError } = require('../utils/AppError');
 // Get the user's cart
 exports.getCart = async (req, res, next) => {
   try {
-    let cart = await req.prisma.cart.findUnique({
-      where: { userId: req.user.id },
-      include: {
-        items: {
-          include: {
-            product: { include: { images: { where: { isPrimary: true }, take: 1 } } }
-          }
+    const include = {
+      items: {
+        include: {
+          product: { include: { images: { where: { isPrimary: true }, take: 1 } } }
         }
       }
-    });
+    };
+
+    let cart = await req.prisma.cart.findUnique({ where: { userId: req.user.id }, include });
 
     if (!cart) {
-      cart = await req.prisma.cart.create({
-        data: { userId: req.user.id },
-        include: { items: { include: { product: { include: { images: { where: { isPrimary: true }, take: 1 } } } } } }
+      // upsert avoids a P2002 race when addToCart creates the cart concurrently
+      cart = await req.prisma.cart.upsert({
+        where: { userId: req.user.id },
+        update: {},
+        create: { userId: req.user.id },
+        include,
       });
     }
 
@@ -127,6 +129,31 @@ exports.clearCart = async (req, res, next) => {
       await req.prisma.cartItem.deleteMany({ where: { cartId: cart.id } });
     }
     res.status(200).json({ status: 'success', message: 'Cart cleared' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Toggle "save for later" on a cart item
+exports.toggleSaveForLater = async (req, res, next) => {
+  try {
+    const { itemId } = req.params;
+    const cart = await req.prisma.cart.findUnique({ where: { userId: req.user.id } });
+    if (!cart) return next(new AppError('Cart not found', 404));
+
+    const item = await req.prisma.cartItem.findFirst({ where: { id: itemId, cartId: cart.id } });
+    if (!item) return next(new AppError('Item not found', 404));
+
+    const updated = await req.prisma.cartItem.update({
+      where: { id: itemId },
+      data: { savedForLater: !item.savedForLater },
+    });
+
+    res.status(200).json({
+      status: 'success',
+      message: updated.savedForLater ? 'Saved for later' : 'Moved to bag',
+      data: { savedForLater: updated.savedForLater },
+    });
   } catch (error) {
     next(error);
   }

@@ -47,6 +47,9 @@ export default function Login() {
             <div>
               <label className="overline text-muted-foreground">Password</label>
               <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} data-testid="login-password" className="mt-2 w-full border-0 border-b border-input bg-transparent px-0 py-2 focus:border-foreground focus:ring-0" placeholder="••••••••" />
+              <div className="mt-2 text-right">
+                <Link to="/forgot-password" data-testid="forgot-password-link" className="text-xs text-muted-foreground transition-colors hover:text-foreground">Forgot password?</Link>
+              </div>
             </div>
             <button type="submit" disabled={loading} data-testid="login-submit" className="w-full bg-foreground py-4 text-[12px] font-semibold uppercase tracking-luxe-sm text-white transition-colors hover:bg-gold disabled:opacity-50">
               {loading ? 'Signing in…' : 'Sign In'}

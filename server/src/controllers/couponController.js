@@ -1,7 +1,5 @@
 const { AppError } = require('../utils/AppError');
 
-console.log('Loading couponController.js');
-
 exports.validateCoupon = async (req, res, next) => {
   try {
     const { code, subtotal } = req.body;
@@ -160,5 +158,3 @@ exports.toggleCoupon = async (req, res, next) => {
     next(error);
   }
 };
-
-console.log('couponController exports:', Object.keys(exports));

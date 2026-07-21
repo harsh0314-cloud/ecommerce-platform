@@ -15,9 +15,9 @@ export default function Dashboard() {
   useEffect(() => {
     api.get('/admin/stats')
       .then((res) => setStats({
-        totalOrders: res.data?.totalOrders || 0,
-        totalRevenue: res.data?.totalRevenue || 0,
-        users: res.data?.totalCustomers || 0
+        totalOrders: res.data?.stats?.totalOrders || 0,
+        totalRevenue: res.data?.stats?.totalRevenue || 0,
+        users: res.data?.stats?.totalUsers || 0
       }))
       .catch((err) => console.error("Stats error:", err.message));
   }, []);

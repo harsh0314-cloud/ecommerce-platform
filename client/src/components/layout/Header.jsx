@@ -6,6 +6,7 @@ import useAuthStore from '../../store/authStore';
 import { useCartStore } from '../../store/cartStore';
 import useWishlist from '../../hooks/useWishlist';
 import CartDrawer from '../CartDrawer';
+import api from '../../services/api';
 
 const NAV = [
   { label: 'Home', to: '/' },
@@ -23,6 +24,8 @@ export default function Header() {
   const [mobileSearchTrigger, setMobileSearchTrigger] = useState(false); 
   const [cartOpen, setCartOpen] = useState(false);
   const [query, setQuery] = useState('');
+  const [suggestions, setSuggestions] = useState([]);
+  const [sugLoading, setSugLoading] = useState(false);
 
   const { user, isAuthenticated, logout } = useAuthStore();
   const cartItems = useCartStore((s) => s.items);
@@ -67,9 +70,31 @@ export default function Header() {
     if (query.trim()) { 
       navigate(`/products?search=${encodeURIComponent(query.trim())}`); 
       setQuery(''); 
+      setSuggestions([]);
       setSearchOpen(false); 
       setMobileSearchTrigger(false); // Reset trigger on search
     }
+  };
+
+  // Instant search suggestions (debounced)
+  useEffect(() => {
+    const q = query.trim();
+    if (q.length < 2) { setSuggestions([]); return; }
+    setSugLoading(true);
+    const t = setTimeout(() => {
+      api.get(`/products/suggestions?q=${encodeURIComponent(q)}`)
+        .then((res) => setSuggestions(res.data?.suggestions || []))
+        .catch(() => setSuggestions([]))
+        .finally(() => setSugLoading(false));
+    }, 250);
+    return () => clearTimeout(t);
+  }, [query]);
+
+  const goToProduct = (slug) => {
+    navigate(`/products/${slug}`);
+    setQuery('');
+    setSuggestions([]);
+    closeSearch();
   };
 
   const dark = transparent;
@@ -140,11 +165,46 @@ export default function Header() {
                   <Search size={28} />
                   <input autoFocus value={query} onChange={(e) => setQuery(e.target.value)} data-testid="search-input" placeholder="What are you looking for?" className="w-full border-0 bg-transparent p-0 font-display text-3xl font-semibold tracking-tight placeholder:text-muted-foreground focus:ring-0" />
                 </div>
+
+                {/* Instant suggestions */}
+                {query.trim().length >= 2 && (
+                  <div className="mt-6" data-testid="search-suggestions">
+                    {sugLoading && suggestions.length === 0 && (
+                      <p className="text-sm text-muted-foreground">Searching…</p>
+                    )}
+                    {!sugLoading && suggestions.length === 0 && (
+                      <p className="text-sm text-muted-foreground">No matches for “{query}”. Press Enter to search anyway.</p>
+                    )}
+                    <div className="space-y-1">
+                      {suggestions.map((s) => (
+                        <button
+                          key={s.id}
+                          type="button"
+                          onClick={() => goToProduct(s.slug)}
+                          data-testid={`suggestion-${s.slug}`}
+                          className="flex w-full items-center gap-4 rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-surface"
+                        >
+                          <div className="h-12 w-12 shrink-0 overflow-hidden rounded bg-surface">
+                            {s.images?.[0]?.url && <img src={s.images[0].url} alt={s.name} className="h-full w-full object-cover" />}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium">{s.name}</p>
+                            <p className="text-xs text-muted-foreground">{s.category?.name}</p>
+                          </div>
+                          <span className="text-sm font-semibold">₹{parseFloat(s.price).toFixed(0)}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {query.trim().length < 2 && (
                 <div className="mt-8 flex flex-wrap gap-3">
                   {['Hoodies', 'Jackets', 'Sneakers', 'Trousers'].map((t) => (
                     <button key={t} type="button" onClick={() => { navigate(`/products?search=${t}`); closeSearch(); }} className="border border-border px-5 py-2 text-xs uppercase tracking-luxe-sm transition-colors hover:bg-foreground hover:text-white">{t}</button>
                   ))}
                 </div>
+                )}
               </motion.form>
             </div>
           </motion.div>

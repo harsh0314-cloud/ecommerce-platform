@@ -51,6 +51,7 @@ model User {
   role          UserRole  @default(USER)
   isVerified    Boolean   @default(false)
   isActive      Boolean   @default(true)
+  isGuest       Boolean   @default(false)
   googleId      String?   @unique
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -269,6 +270,7 @@ model CartItem {
   productId  String
   variantId  String?
   quantity   Int      @default(1)
+  savedForLater Boolean @default(false)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
@@ -319,6 +321,7 @@ model Order {
   coupon     Coupon?     @relation(fields: [couponId], references: [id])
   items      OrderItem[]
   payment    Payment?
+  returnRequests ReturnRequest[]
   address    Address     @relation(fields: [addressId], references: [id])
   addressId  String
 
@@ -442,4 +445,24 @@ model RecentlyViewed {
   @@index([userId])
   @@index([sessionId])
   @@map("recently_viewed")
+}
+
+model ReturnRequest {
+  id           String   @id @default(uuid())
+  orderId      String
+  userId       String
+  type         String   @default("RETURN")
+  reason       String
+  status       String   @default("REQUESTED")
+  refundAmount Decimal? @db.Decimal(10, 2)
+  adminNote    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@index([userId])
+  @@index([status])
+  @@map("return_requests")
 }

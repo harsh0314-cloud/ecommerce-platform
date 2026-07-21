@@ -21,6 +21,7 @@ const userRoutes = require('./src/routes/userRoutes');
 const wishlistRoutes = require('./src/routes/wishlistRoutes');
 const couponRoutes = require('./src/routes/couponRoutes'); 
 const reviewRoutes = require('./src/routes/reviewRoutes');
+const shippingRoutes = require('./src/routes/shippingRoutes');
 
 const app = express();
 const prisma = new PrismaClient();
@@ -30,19 +31,24 @@ app.set('trust proxy', 1);
 // CORS
 const allowedOrigins = [
   'https://storex-frontend-gold.vercel.app',
-  'http://localhost:5173', 
-  'http://localhost:3000', 
-  'http://127.0.0.1:5173'
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'http://127.0.0.1:5173',
+  ...(process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean) : []),
 ];
 
 app.use(cors({
   origin: function(origin, callback) {
     if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) === -1) {
-      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
-      return callback(new Error(msg), false);
-    }
-    return callback(null, true);
+    try {
+      const host = new URL(origin).hostname;
+      const isPreview = /\.preview\.emergentagent\.com$/.test(host) || /\.preview\.emergentcf\.cloud$/.test(host);
+      const isVercel = /\.vercel\.app$/.test(host);
+      if (allowedOrigins.indexOf(origin) !== -1 || isPreview || isVercel || host === 'localhost' || host === '127.0.0.1') {
+        return callback(null, true);
+      }
+    } catch (e) { /* fall through to reject */ }
+    return callback(new Error('The CORS policy for this site does not allow access from the specified Origin.'), false);
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
@@ -56,7 +62,10 @@ app.use(helmet({
 
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100,
+  max: 1000,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => req.method === 'GET' || req.method === 'OPTIONS',
   message: { error: 'Too many requests from this IP, please try again later.' },
 });
 app.use('/api', limiter);
@@ -65,6 +74,7 @@ app.use('/api', limiter);
 const paymentController = require('./src/controllers/paymentController');
 app.post('/api/payments/webhook', 
   express.raw({ type: 'application/json' }), 
+  (req, res, next) => { req.prisma = prisma; next(); },
   paymentController.handleWebhook
 );
 
@@ -102,6 +112,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/wishlist', wishlistRoutes);
 app.use('/api/coupons', couponRoutes); // ADD THIS
 app.use('/api/reviews', reviewRoutes);
+app.use('/api/shipping', shippingRoutes);
 app.use('*', (req, res) => {
   res.status(404).json({ error: `Route ${req.originalUrl} not found` });
 });

@@ -8,6 +8,7 @@ router.use(authenticate);
 router.get('/', cartController.getCart);
 router.post('/', cartController.addToCart);
 router.patch('/:itemId', cartController.updateCartItem);
+router.patch('/:itemId/save', cartController.toggleSaveForLater);
 router.delete('/clear', cartController.clearCart); // NEW: Clear cart route
 router.delete('/:itemId', cartController.removeFromCart);
 

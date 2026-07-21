@@ -25,6 +25,10 @@ router.post('/inventory/bulk', adminController.bulkUpdateInventory);
 router.get('/orders', adminController.getAllOrders);
 router.patch('/orders/:id/status', adminController.updateOrderStatus);
 
+// --- RETURNS / EXCHANGES ---
+router.get('/returns', adminController.getAllReturns);
+router.patch('/returns/:id', adminController.updateReturnRequest);
+
 // --- CUSTOMERS ---
 router.get('/customers', adminController.getAllCustomers);
 

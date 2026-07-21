@@ -385,6 +385,77 @@ exports.getAllCustomers = async (req, res, next) => {
   }
 };
 
+// ─── RETURNS / EXCHANGES ────────────────────────────────────────────
+exports.getAllReturns = async (req, res, next) => {
+  try {
+    const { status } = req.query;
+    const where = status ? { status } : {};
+    const returns = await prisma.returnRequest.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        order: {
+          select: {
+            orderNumber: true,
+            total: true,
+            status: true,
+            paymentMethod: true,
+            user: { select: { firstName: true, lastName: true, email: true } },
+          },
+        },
+      },
+    });
+    res.status(200).json({ status: 'success', data: { returns } });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.updateReturnRequest = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { status, refundAmount, adminNote } = req.body;
+    const allowed = ['REQUESTED', 'APPROVED', 'REJECTED', 'COMPLETED'];
+    if (status && !allowed.includes(status)) {
+      return next(new AppError('Invalid status.', 400));
+    }
+
+    const request = await prisma.returnRequest.findUnique({
+      where: { id },
+      include: { order: { include: { items: true, payment: true } } },
+    });
+    if (!request) return next(new AppError('Return request not found', 404));
+
+    const updated = await prisma.$transaction(async (tx) => {
+      const data = {};
+      if (status) data.status = status;
+      if (adminNote !== undefined) data.adminNote = adminNote;
+      if (refundAmount !== undefined) data.refundAmount = refundAmount === null ? null : parseFloat(refundAmount);
+
+      // On COMPLETED return: refund + restock + mark order REFUNDED
+      if (status === 'COMPLETED') {
+        if (data.refundAmount === undefined) data.refundAmount = parseFloat(request.order.total);
+        await tx.order.update({ where: { id: request.orderId }, data: { status: 'REFUNDED' } });
+        if (request.order.payment) {
+          await tx.payment.update({ where: { orderId: request.orderId }, data: { status: 'REFUNDED' } });
+        }
+        for (const item of request.order.items) {
+          await tx.inventory.updateMany({
+            where: { productId: item.productId },
+            data: { quantity: { increment: item.quantity } },
+          });
+        }
+      }
+
+      return tx.returnRequest.update({ where: { id }, data });
+    });
+
+    res.status(200).json({ status: 'success', data: { request: updated }, message: 'Return request updated' });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // ─── USERS (alias for getAllUsers if needed elsewhere) ──────────────
 exports.getAllUsers = async (req, res, next) => {
   try {

@@ -1,22 +1,26 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCartStore } from '../store/cartStore';
+import useAuthStore from '../store/authStore';
 import api from '../services/api';
 import toast from 'react-hot-toast';
 import { fmtPrice } from '../components/ProductCard';
-import { Tag, X, Truck, Receipt, ShieldCheck } from 'lucide-react';
+import { Tag, X, Truck, Receipt, ShieldCheck, User } from 'lucide-react';
 
 const input = 'w-full border-0 border-b border-input bg-transparent px-0 py-2.5 text-sm focus:border-foreground focus:ring-0';
 const label = 'overline text-muted-foreground';
 
 export default function CheckoutPage() {
   const { items, total: cartSubtotal, fetchCart } = useCartStore();
+  const { user } = useAuthStore();
   const navigate = useNavigate();
+  const isGuest = user?.isGuest;
 
   const [form, setForm] = useState({ 
     firstName: '', 
     lastName: '', 
     phone: '', 
+    email: '',
     addressLine1: '', 
     city: '', 
     state: '', 
@@ -46,7 +50,7 @@ export default function CheckoutPage() {
   }, []);
 
   const tax = cartSubtotal * 0.18;
-  const shipping = cartSubtotal > 500 ? 0 : 40;
+  const shipping = cartSubtotal > 500 ? 0 : 99;
   const finalTotal = Math.max(0, cartSubtotal + tax + shipping - discount).toFixed(2);
   const updateForm = (field, value) => setForm({ ...form, [field]: value });
 
@@ -83,6 +87,15 @@ export default function CheckoutPage() {
     e.preventDefault();
     setLoading(true);
     try {
+      // Guest checkout: attach contact details to the guest account first
+      if (isGuest) {
+        if (!form.email) { toast.error('Please enter your email'); setLoading(false); return; }
+        const gr = await api.patch('/auth/guest-details', {
+          email: form.email, firstName: form.firstName, lastName: form.lastName, phone: form.phone,
+        });
+        useAuthStore.setState({ user: { ...user, ...gr.data.user } });
+      }
+
       const orderPayload = { 
         ...form, 
         paymentMethod: paymentMethod === 'COD' ? 'CASH_ON_DELIVERY' : 'RAZORPAY',
@@ -162,6 +175,13 @@ export default function CheckoutPage() {
           {/* Shipping */}
           <div className="space-y-6">
             <h2 className="font-display text-lg font-semibold">Shipping Address</h2>
+            {isGuest && (
+              <div className="rounded-lg border border-border bg-surface p-4" data-testid="guest-checkout-banner">
+                <p className="flex items-center gap-2 text-sm font-medium"><User size={15} /> Checking out as a guest</p>
+                <p className="mt-1 text-xs text-muted-foreground">Enter your email for the order confirmation & invoice. <button type="button" onClick={() => navigate('/login')} className="link-underline font-semibold text-foreground">Sign in instead</button></p>
+                <div className="mt-3"><label className={label}>Email</label><input required type="email" data-testid="guest-email" className={input} value={form.email} onChange={(e) => updateForm('email', e.target.value)} placeholder="you@example.com" /></div>
+              </div>
+            )}
             <div className="grid gap-6 sm:grid-cols-2">
               <div><label className={label}>First Name</label><input required className={input} value={form.firstName} onChange={(e) => updateForm('firstName', e.target.value)} /></div>
               <div><label className={label}>Last Name</label><input required className={input} value={form.lastName} onChange={(e) => updateForm('lastName', e.target.value)} /></div>

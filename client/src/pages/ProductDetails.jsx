@@ -20,24 +20,27 @@ export default function ProductDetails() {
 
   const [product, setProduct] = useState(null);
   const [related, setRelated] = useState([]);
+  const [fbt, setFbt] = useState([]);
   const [selectedImage, setSelectedImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [adding, setAdding] = useState(false);
+  const [addingBundle, setAddingBundle] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [zoom, setZoom] = useState({ active: false, x: 50, y: 50 });
 
   useEffect(() => {
     setLoading(true);
+    setSelectedImage(0);
     api.get(`/products/${slug}`)
       .then((res) => {
         const p = res.data?.product || res.data?.data?.product;
         setProduct(p);
-        if (p?.category?.id) {
-          api.get(`/products?category=${p.category.id}&limit=4`)
-            .then((r) => setRelated((r.data?.products || []).filter((x) => x.id !== p.id)));
-        }
       })
       .catch(() => toast.error('Product not found'))
       .finally(() => setLoading(false));
+
+    api.get(`/products/${slug}/related`).then((r) => setRelated(r.data?.products || [])).catch(() => {});
+    api.get(`/products/${slug}/frequently-bought-together`).then((r) => setFbt(r.data?.products || [])).catch(() => {});
   }, [slug]);
 
   if (loading) {
@@ -81,6 +84,27 @@ export default function ProductDetails() {
     toast(added ? 'Saved to wishlist' : 'Removed from wishlist', { icon: added ? '♥' : '♡' });
   };
 
+  const handleAddBundle = async () => {
+    setAddingBundle(true);
+    try {
+      await addToCart(product.id, 1);
+      for (const p of fbt) { await addToCart(p.id, 1); }
+      window.dispatchEvent(new Event('open-cart'));
+      toast.success('Bundle added to bag');
+    } catch {
+      toast.error('Please sign in to add items');
+    } finally {
+      setAddingBundle(false);
+    }
+  };
+
+  const onZoomMove = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    setZoom({ active: true, x, y });
+  };
+
   return (
     <>
       <SEO 
@@ -99,9 +123,23 @@ export default function ProductDetails() {
         <div className="grid gap-12 lg:grid-cols-2">
           {/* Images */}
           <div className="space-y-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="relative aspect-square overflow-hidden rounded-xl bg-gray-100">
-              <img src={product.images?.[selectedImage]?.url} alt={product.name} className="h-full w-full object-cover" loading="eager" />
-              {onSale && <span className="absolute left-4 top-4 bg-sale-red px-3 py-1 text-[10px] font-semibold uppercase tracking-luxe-sm text-white">-{discount}%</span>}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              onMouseMove={onZoomMove}
+              onMouseEnter={() => setZoom((z) => ({ ...z, active: true }))}
+              onMouseLeave={() => setZoom({ active: false, x: 50, y: 50 })}
+              data-testid="product-zoom-image"
+              className="relative aspect-square overflow-hidden rounded-xl bg-gray-100 cursor-zoom-in"
+            >
+              <img
+                src={product.images?.[selectedImage]?.url}
+                alt={product.name}
+                loading="eager"
+                className="h-full w-full object-cover transition-transform duration-200 ease-out"
+                style={zoom.active ? { transform: 'scale(2)', transformOrigin: `${zoom.x}% ${zoom.y}%` } : { transform: 'scale(1)' }}
+              />
+              {onSale && <span className="absolute left-4 top-4 z-10 bg-sale-red px-3 py-1 text-[10px] font-semibold uppercase tracking-luxe-sm text-white">-{discount}%</span>}
             </motion.div>
             {product.images?.length > 1 && (
               <div className="flex gap-3">
@@ -162,6 +200,48 @@ export default function ProductDetails() {
         </div>
 
         <ReviewSection productId={product.id} />
+
+        {/* Frequently Bought Together */}
+        {fbt.length > 0 && (
+          <div className="mt-24" data-testid="fbt-section">
+            <h2 className="font-display text-2xl font-bold tracking-tight">Frequently Bought Together</h2>
+            <div className="mt-8 flex flex-col gap-8 lg:flex-row lg:items-center">
+              <div className="flex flex-1 flex-wrap items-center gap-4">
+                <div className="flex flex-col items-center">
+                  <div className="h-28 w-28 overflow-hidden rounded-lg bg-surface">
+                    <img src={product.images?.[0]?.url} alt={product.name} className="h-full w-full object-cover" />
+                  </div>
+                  <p className="mt-2 max-w-[7rem] truncate text-center text-xs">{product.name}</p>
+                </div>
+                {fbt.map((p) => (
+                  <div key={p.id} className="flex items-center gap-4">
+                    <span className="text-2xl text-muted-foreground">+</span>
+                    <div className="flex flex-col items-center">
+                      <div className="h-28 w-28 overflow-hidden rounded-lg bg-surface">
+                        <img src={p.images?.[0]?.url} alt={p.name} className="h-full w-full object-cover" />
+                      </div>
+                      <p className="mt-2 max-w-[7rem] truncate text-center text-xs">{p.name}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="lg:w-64">
+                <p className="text-sm text-muted-foreground">Bundle price</p>
+                <p className="font-display text-2xl font-semibold">
+                  {fmtPrice(Number(product.price) + fbt.reduce((s, p) => s + Number(p.price), 0))}
+                </p>
+                <button
+                  onClick={handleAddBundle}
+                  disabled={addingBundle}
+                  data-testid="fbt-add-all"
+                  className="mt-4 w-full bg-foreground py-3.5 text-[11px] font-semibold uppercase tracking-luxe-sm text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+                >
+                  {addingBundle ? 'Adding…' : `Add all ${fbt.length + 1} to Bag`}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Related */}
         {related.length > 0 && (

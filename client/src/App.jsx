@@ -19,12 +19,16 @@ import Dashboard from './pages/admin/Dashboard';
 import ProductList from './pages/admin/ProductList';
 import AdminCoupons from './pages/admin/AdminCoupons';
 import AdminInventory from './pages/admin/AdminInventory';
+import AdminReturns from './pages/admin/AdminReturns';
 import PaymentSuccess from './pages/PaymentSuccess';
 import PaymentCancel from './pages/PaymentCancel';
 import Profile from './pages/Profile';
 import OrderDetails from './pages/OrderDetails';
 import Cart from './pages/Cart';
 import Wishlist from './pages/Wishlist';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
+import VerifyEmail from './pages/VerifyEmail';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -60,6 +64,9 @@ function AnimatedRoutes() {
           <Route path="/checkout" element={<Page><CheckoutPage /></Page>} />
           <Route path="/login" element={<Page><Login /></Page>} />
           <Route path="/register" element={<Page><Register /></Page>} />
+          <Route path="/forgot-password" element={<Page><ForgotPassword /></Page>} />
+          <Route path="/reset-password" element={<Page><ResetPassword /></Page>} />
+          <Route path="/verify-email" element={<Page><VerifyEmail /></Page>} />
           <Route path="/orders" element={<Page><Orders /></Page>} />
           <Route path="/orders/:id" element={<Page><OrderDetails /></Page>} />
           <Route path="/profile" element={<Page><Profile /></Page>} />
@@ -72,6 +79,7 @@ function AnimatedRoutes() {
             <Route path="inventory" element={<AdminInventory />} />
             <Route path="add-product" element={<AddProduct />} />
             <Route path="coupons" element={<AdminCoupons />} />
+            <Route path="returns" element={<AdminReturns />} />
           </Route>
         </Routes>
       </AnimatePresence>

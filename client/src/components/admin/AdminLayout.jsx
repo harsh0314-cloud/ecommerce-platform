@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom';
-import { LayoutDashboard, Package, PlusCircle, Tag, Warehouse, LogOut } from 'lucide-react';
+import { LayoutDashboard, Package, PlusCircle, Tag, Warehouse, LogOut, RotateCcw } from 'lucide-react';
 import useAuthStore from '../../store/authStore';
 import { useNavigate } from 'react-router-dom';
 
@@ -9,6 +9,7 @@ const navItems = [
   { to: '/admin/inventory', icon: Warehouse, label: 'Inventory' },
   { to: '/admin/add-product', icon: PlusCircle, label: 'Add Product' },
   { to: '/admin/coupons', icon: Tag, label: 'Coupons' },
+  { to: '/admin/returns', icon: RotateCcw, label: 'Returns' },
 ];
 
 export default function AdminLayout() {
